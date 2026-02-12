@@ -217,11 +217,12 @@ function addTextLabel(text, pos, rotY) {
   c.fillText(text, 256, 42);
 
   const tex  = new THREE.CanvasTexture(canvas);
-  const mat  = new THREE.SpriteMaterial({ map: tex, transparent: true });
-  const sprite = new THREE.Sprite(mat);
-  sprite.position.set(...pos);
-  sprite.scale.set(2.5, 0.32, 1);
-  scene.add(sprite);
+  const mat  = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
+  const geo  = new THREE.PlaneGeometry(2.5, 0.32);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(...pos);
+  mesh.rotation.y = rotY;
+  scene.add(mesh);
 }
 
 // ── HUD overlay (desktop) ────────────────────────────────────────────
