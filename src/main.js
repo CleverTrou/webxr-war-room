@@ -36,7 +36,10 @@ document.fonts.ready.then(() => {
   } catch (e) {
     console.error('Init failed:', e);
     const el = document.getElementById('hud');
-    if (el) el.innerHTML = `<span style="color:red">ERROR: ${e.message}</span>`;
+    if (el) {
+      el.style.color = 'red';
+      el.textContent = `ERROR: ${e.message}`;
+    }
   }
 });
 
