@@ -421,8 +421,12 @@ function buildCommandCenter(group) {
   }
 
   // overhead lights
-  group.add(Object.assign(new THREE.PointLight(0x80ffea, 0.3, 15), { position: new THREE.Vector3(0, 7, 0) }));
-  group.add(Object.assign(new THREE.PointLight(0x3060a0, 0.4, 20), { position: new THREE.Vector3(0, 5, 0) }));
+  const light1 = new THREE.PointLight(0x80ffea, 0.3, 15);
+  light1.position.set(0, 7, 0);
+  group.add(light1);
+  const light2 = new THREE.PointLight(0x3060a0, 0.4, 20);
+  light2.position.set(0, 5, 0);
+  group.add(light2);
 }
 
 // ── VR teleport handler ──────────────────────────────────────────────
