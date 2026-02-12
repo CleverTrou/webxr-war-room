@@ -146,25 +146,27 @@ function init() {
   }
 
   teleportPositions.forEach(pos => {
+    // solid circle = full click target
+    const disc = new THREE.Mesh(
+      new THREE.CircleGeometry(0.3, 32),
+      new THREE.MeshBasicMaterial({ color: 0x80ffea, side: THREE.DoubleSide, transparent: true, opacity: 0.15 })
+    );
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.set(...pos);
+    disc.userData.isTeleport = true;
+    disc.userData.target = new THREE.Vector3(...pos);
+    scene.add(disc);
+    teleportMarkers.push(disc);
+
+    // ring outline on top for visual
     const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.18, 0.26, 32),
+      new THREE.RingGeometry(0.22, 0.3, 32),
       new THREE.MeshBasicMaterial({ color: 0x80ffea, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
     );
     ring.rotation.x = -Math.PI / 2;
-    ring.position.set(...pos);
-    ring.userData.isTeleport = true;
-    ring.userData.target = new THREE.Vector3(...pos);
-    ring.userData.baseOpacity = 0.5;
+    ring.position.set(pos[0], pos[1] + 0.005, pos[2]);
+    disc.userData.ringOverlay = ring;
     scene.add(ring);
-    teleportMarkers.push(ring);
-
-    const disc = new THREE.Mesh(
-      new THREE.CircleGeometry(0.18, 32),
-      new THREE.MeshBasicMaterial({ color: 0x80ffea, transparent: true, opacity: 0.1 })
-    );
-    disc.rotation.x = -Math.PI / 2;
-    disc.position.set(pos[0], pos[1] + 0.005, pos[2]);
-    scene.add(disc);
   });
 
   // ── VR controllers ────────────────────────────────────────────────
@@ -192,25 +194,50 @@ function init() {
   controller1.add(new THREE.Line(lineGeo.clone(), lineMat.clone()));
 
   // ── desktop controls ──────────────────────────────────────────────
-  let justTeleported = false;
 
-  renderer.domElement.addEventListener('click', () => {
-    if (!renderer.xr.isPresenting && !isPointerLocked && !justTeleported) {
+  // Unified click: try teleport first, only lock pointer if nothing was hit
+  renderer.domElement.addEventListener('click', e => {
+    if (renderer.xr.isPresenting) return;
+
+    if (!isPointerLocked) {
+      // raycast from actual mouse position
+      const rect = renderer.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      );
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObjects(teleportMarkers);
+      if (hits.length > 0) {
+        const target = hits[0].object.userData.target;
+        cameraRig.position.set(target.x, 0, target.z);
+        return;  // teleported — don't lock pointer
+      }
+      // no ring hit — lock pointer for FPS look
       renderer.domElement.requestPointerLock();
+    } else {
+      // pointer-locked: raycast from screen center (crosshair)
+      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      const hits = raycaster.intersectObjects(teleportMarkers);
+      if (hits.length > 0) {
+        const target = hits[0].object.userData.target;
+        cameraRig.position.set(target.x, 0, target.z);
+      }
     }
-    justTeleported = false;
   });
+
   document.addEventListener('pointerlockchange', () => {
     isPointerLocked = (document.pointerLockElement === renderer.domElement);
     renderer.domElement.style.cursor = isPointerLocked ? 'none' : '';
   });
+
   document.addEventListener('mousemove', e => {
     if (isPointerLocked) {
       yaw   -= e.movementX * 0.002;
       pitch -= e.movementY * 0.002;
       pitch  = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
     } else if (!renderer.xr.isPresenting) {
-      // hover detection for teleport rings
+      // hover detection for teleport markers
       const rect = renderer.domElement.getBoundingClientRect();
       const mouse = new THREE.Vector2(
         ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -222,44 +249,23 @@ function init() {
       if (newHover !== hoveredRing) {
         if (hoveredRing) {
           hoveredRing.material.color.setHex(0x80ffea);
+          hoveredRing.material.opacity = 0.15;
+          if (hoveredRing.userData.ringOverlay) {
+            hoveredRing.userData.ringOverlay.material.color.setHex(0x80ffea);
+          }
           hoveredRing.scale.set(1, 1, 1);
         }
         hoveredRing = newHover;
         if (hoveredRing) {
           hoveredRing.material.color.setHex(0xffffff);
-          hoveredRing.scale.set(1.4, 1.4, 1.4);
+          hoveredRing.material.opacity = 0.35;
+          if (hoveredRing.userData.ringOverlay) {
+            hoveredRing.userData.ringOverlay.material.color.setHex(0xffffff);
+          }
+          hoveredRing.scale.set(1.3, 1.3, 1.3);
         }
       }
       renderer.domElement.style.cursor = hoveredRing ? 'pointer' : '';
-    }
-  });
-
-  // pointer-locked: click to teleport to crosshair target
-  document.addEventListener('mousedown', e => {
-    if (!isPointerLocked || renderer.xr.isPresenting) return;
-    const mouse = new THREE.Vector2(0, 0);
-    raycaster.setFromCamera(mouse, camera);
-    const hits = raycaster.intersectObjects(teleportMarkers);
-    if (hits.length > 0) {
-      const target = hits[0].object.userData.target;
-      cameraRig.position.set(target.x, 0, target.z);
-    }
-  });
-
-  // non-locked: click directly on rings
-  renderer.domElement.addEventListener('mousedown', e => {
-    if (isPointerLocked || renderer.xr.isPresenting) return;
-    const rect = renderer.domElement.getBoundingClientRect();
-    const mouse = new THREE.Vector2(
-      ((e.clientX - rect.left) / rect.width) * 2 - 1,
-      -((e.clientY - rect.top) / rect.height) * 2 + 1
-    );
-    raycaster.setFromCamera(mouse, camera);
-    const hits = raycaster.intersectObjects(teleportMarkers);
-    if (hits.length > 0) {
-      const target = hits[0].object.userData.target;
-      cameraRig.position.set(target.x, 0, target.z);
-      justTeleported = true;
     }
   });
 
@@ -500,9 +506,13 @@ function render() {
   // pulse teleport markers
   teleportMarkers.forEach((m, i) => {
     if (m === hoveredRing) {
-      m.material.opacity = 1.0;
+      m.material.opacity = 0.35;
+      if (m.userData.ringOverlay) m.userData.ringOverlay.material.opacity = 0.9;
     } else {
-      m.material.opacity = 0.35 + 0.2 * Math.sin(elapsedTime * 2 + i);
+      m.material.opacity = 0.08 + 0.08 * Math.sin(elapsedTime * 2 + i);
+      if (m.userData.ringOverlay) {
+        m.userData.ringOverlay.material.opacity = 0.35 + 0.2 * Math.sin(elapsedTime * 2 + i);
+      }
     }
   });
 
