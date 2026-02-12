@@ -18,6 +18,8 @@ let raycaster, tempMatrix;
 const teleportMarkers = [];
 const clock = new THREE.Clock();
 let environmentGroup;   // holds all room geometry — hidden in AR mode
+const MOVE_SPEED = 3;  // meters per second for thumbstick locomotion
+const _moveVec = new THREE.Vector3();
 
 // desktop look
 let isPointerLocked = false;
@@ -100,16 +102,37 @@ function init() {
 
   // ── teleport markers ──────────────────────────────────────────────
   const teleportPositions = [
+    // center
     [0,    0.01,  0],
-    [0,    0.01, -2.5],
-    [-3,   0.01, -0.5],
-    [3,    0.01, -0.5],
-    [0,    0.01,  2.5],
+    // inner ring — close viewing positions for each panel
+    [ 0,    0.01, -2.5],    // front of status
+    [-2.5,  0.01, -1.5],    // left-front (responders)
+    [ 2.5,  0.01, -1.5],    // right-front (tasks)
+    [-2.2,  0.01,  1.5],    // left-rear (timeline)
+    [ 2.2,  0.01,  1.5],    // right-rear (monitoring)
+    // mid ring — between panels
+    [-1.5,  0.01,  0],      // left of center
+    [ 1.5,  0.01,  0],      // right of center
+    [ 0,    0.01,  1.5],    // behind center
+    [-3.5,  0.01,  0],      // far left
+    [ 3.5,  0.01,  0],      // far right
+    // outer ring — stepped-back overview positions
+    [ 0,    0.01, -4.5],    // far front
+    [-4,    0.01, -3],      // far left-front
+    [ 4,    0.01, -3],      // far right-front
+    [-4.5,  0.01,  1],      // far left
+    [ 4.5,  0.01,  1],      // far right
+    [-3,    0.01,  3.5],    // far left-rear
+    [ 3,    0.01,  3.5],    // far right-rear
+    [ 0,    0.01,  4],      // far rear center
+    // corridor positions
+    [-1,    0.01, -4],      // left of status panel
+    [ 1,    0.01, -4],      // right of status panel
   ];
 
   teleportPositions.forEach(pos => {
     const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.25, 0.35, 32),
+      new THREE.RingGeometry(0.18, 0.26, 32),
       new THREE.MeshBasicMaterial({ color: 0x80ffea, side: THREE.DoubleSide, transparent: true, opacity: 0.7 })
     );
     ring.rotation.x = -Math.PI / 2;
@@ -120,7 +143,7 @@ function init() {
     teleportMarkers.push(ring);
 
     const disc = new THREE.Mesh(
-      new THREE.CircleGeometry(0.25, 32),
+      new THREE.CircleGeometry(0.18, 32),
       new THREE.MeshBasicMaterial({ color: 0x80ffea, transparent: true, opacity: 0.15 })
     );
     disc.rotation.x = -Math.PI / 2;
@@ -426,7 +449,8 @@ function updateHud() {
     Click on a cyan ring to teleport<br>
     Press <kbd>Esc</kbd> to release mouse<br><br>
     <em>Quest 2:</em> Click "Enter VR" button<br>
-    Point controller at cyan circles → pull trigger
+    Point controller at cyan circles → pull trigger<br>
+    Push thumbstick to walk freely
   `;
 }
 
@@ -437,11 +461,36 @@ function animate() {
 
 function render() {
   const t = clock.getElapsedTime();
+  const dt = clock.getDelta();
 
   teleportMarkers.forEach((m, i) => {
     m.material.opacity = 0.45 + 0.3 * Math.sin(t * 2 + i);
   });
 
+  // ── thumbstick smooth locomotion (VR) ──────────────────────────────
+  if (renderer.xr.isPresenting) {
+    const session = renderer.xr.getSession();
+    if (session) {
+      for (const source of session.inputSources) {
+        if (!source.gamepad) continue;
+        const axes = source.gamepad.axes;
+        // Quest thumbstick is axes[2],axes[3]; apply deadzone
+        const x = Math.abs(axes[2]) > 0.15 ? axes[2] : 0;
+        const z = Math.abs(axes[3]) > 0.15 ? axes[3] : 0;
+        if (x !== 0 || z !== 0) {
+          // move relative to head orientation
+          const headQuat = camera.getWorldQuaternion(new THREE.Quaternion());
+          _moveVec.set(x, 0, z).applyQuaternion(headQuat);
+          _moveVec.y = 0; // stay on ground plane
+          _moveVec.normalize().multiplyScalar(MOVE_SPEED * dt * Math.max(Math.abs(x), Math.abs(z)));
+          cameraRig.position.add(_moveVec);
+          break; // use first controller with input
+        }
+      }
+    }
+  }
+
+  // desktop look
   if (!renderer.xr.isPresenting && isPointerLocked) {
     camera.rotation.set(pitch, yaw, 0, 'YXZ');
   }
