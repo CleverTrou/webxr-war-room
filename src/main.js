@@ -23,8 +23,7 @@ let isPointerLocked = false;
 let yaw = 0, pitch = 0;
 
 // ── init ─────────────────────────────────────────────────────────────
-document.fonts.ready.then(() => init());
-animate();
+document.fonts.ready.then(() => { init(); animate(); });
 
 function init() {
   // renderer
