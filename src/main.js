@@ -24,6 +24,7 @@ const _moveVec = new THREE.Vector3();
 // desktop look
 let isPointerLocked = false;
 let yaw = 0, pitch = 0;
+const keysDown = {};
 
 // ── init ─────────────────────────────────────────────────────────────
 document.fonts.ready.then(() => { init(); animate(); });
@@ -176,8 +177,13 @@ function init() {
   controller1.add(new THREE.Line(lineGeo.clone(), lineMat.clone()));
 
   // ── desktop controls ──────────────────────────────────────────────
+  let justTeleported = false;
+
   renderer.domElement.addEventListener('click', () => {
-    if (!renderer.xr.isPresenting) renderer.domElement.requestPointerLock();
+    if (!renderer.xr.isPresenting && !isPointerLocked && !justTeleported) {
+      renderer.domElement.requestPointerLock();
+    }
+    justTeleported = false;
   });
   document.addEventListener('pointerlockchange', () => {
     isPointerLocked = (document.pointerLockElement === renderer.domElement);
@@ -188,6 +194,8 @@ function init() {
     pitch -= e.movementY * 0.002;
     pitch  = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
   });
+
+  // pointer-locked mode: click teleports to what you're looking at
   document.addEventListener('mousedown', e => {
     if (!isPointerLocked || renderer.xr.isPresenting) return;
     const mouse = new THREE.Vector2(0, 0);
@@ -198,6 +206,27 @@ function init() {
       cameraRig.position.set(target.x, 0, target.z);
     }
   });
+
+  // non-locked mode: click directly on rings with mouse cursor
+  renderer.domElement.addEventListener('mousedown', e => {
+    if (isPointerLocked || renderer.xr.isPresenting) return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(teleportMarkers);
+    if (hits.length > 0) {
+      const target = hits[0].object.userData.target;
+      cameraRig.position.set(target.x, 0, target.z);
+      justTeleported = true;  // prevent pointer lock on this click
+    }
+  });
+
+  // WASD keyboard movement (desktop)
+  document.addEventListener('keydown', e => { keysDown[e.code] = true; });
+  document.addEventListener('keyup',   e => { keysDown[e.code] = false; });
 
   // resize
   window.addEventListener('resize', () => {
@@ -445,8 +474,10 @@ function updateHud() {
   el.innerHTML = `
     <strong style="color:#80ffea">WebXR Incident War Room</strong><br>
     VR: ${vrSupported ? '✓ Supported' : '✗ Not available'}<br><br>
-    <em>Desktop:</em> Click to lock mouse → look around<br>
-    Click on a cyan ring to teleport<br>
+    <em>Desktop:</em> Click a cyan ring to teleport<br>
+    Click elsewhere to lock mouse → look around<br>
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to walk<br>
+    While locked: click to teleport to crosshair target<br>
     Press <kbd>Esc</kbd> to release mouse<br><br>
     <em>Quest 2:</em> Click "Enter VR" button<br>
     Point controller at cyan circles → pull trigger<br>
@@ -490,9 +521,20 @@ function render() {
     }
   }
 
-  // desktop look
+  // desktop look + WASD movement
   if (!renderer.xr.isPresenting && isPointerLocked) {
     camera.rotation.set(pitch, yaw, 0, 'YXZ');
+    // WASD movement
+    let mx = 0, mz = 0;
+    if (keysDown['KeyW'] || keysDown['ArrowUp'])    mz -= 1;
+    if (keysDown['KeyS'] || keysDown['ArrowDown'])   mz += 1;
+    if (keysDown['KeyA'] || keysDown['ArrowLeft'])   mx -= 1;
+    if (keysDown['KeyD'] || keysDown['ArrowRight'])  mx += 1;
+    if (mx !== 0 || mz !== 0) {
+      _moveVec.set(mx, 0, mz).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+      _moveVec.multiplyScalar(MOVE_SPEED * dt);
+      cameraRig.position.add(_moveVec);
+    }
   }
 
   renderer.render(scene, camera);
