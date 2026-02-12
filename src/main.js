@@ -29,7 +29,16 @@ let yaw = 0, pitch = 0;
 const keysDown = {};
 
 // ── init ─────────────────────────────────────────────────────────────
-document.fonts.ready.then(() => { init(); animate(); });
+document.fonts.ready.then(() => {
+  try {
+    init();
+    animate();
+  } catch (e) {
+    console.error('Init failed:', e);
+    const el = document.getElementById('hud');
+    if (el) el.innerHTML = `<span style="color:red">ERROR: ${e.message}</span>`;
+  }
+});
 
 function init() {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
