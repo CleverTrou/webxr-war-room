@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebXR Incident War Room</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a1929; overflow: hidden; font-family: monospace; }
+    #scene-container { width: 100vw; height: 100vh; }
+    #scene-container canvas { display: block; }
+
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      color: #e0e0e0;
+      background: rgba(10, 25, 41, 0.92);
+      padding: 14px 18px;
+      border: 1px solid #1e3a5f;
+      border-radius: 6px;
+      font-size: 13px;
+      line-height: 1.6;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #hud kbd {
+      background: #1e3a5f;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+
+    #vr-button-container {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
+    /* Style the VRButton that Three.js generates */
+    #vr-button-container button {
+      font-family: monospace !important;
+      font-size: 14px !important;
+    }
+  </style>
+
+  <!-- Three.js via importmap (no build step required) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three":                        "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/":                "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="scene-container"></div>
+  <div id="hud"></div>
+  <div id="vr-button-container"></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

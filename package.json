@@ -1,0 +1,12 @@
+{
+  "name": "webxr-war-room",
+  "version": "0.1.0",
+  "description": "WebXR virtual war room for IT Major Incident management, backed by ServiceNow",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve . --cors -l 8080",
+    "dev:ssl": "npx serve . --cors -l 8080 --ssl-cert cert.pem --ssl-key key.pem"
+  },
+  "keywords": ["webxr", "vr", "three.js", "servicenow", "incident-management"],
+  "license": "MIT"
+}
