@@ -26,7 +26,7 @@ function ctx(canvas) {
 
 function heading(c, text, y = 40) {
   c.fillStyle = HEADING;
-  c.font = 'bold 32px monospace';
+  c.font = 'bold 32px Inter, sans-serif';
   c.fillText(text, 30, y);
   c.strokeStyle = BORDER;
   c.lineWidth = 1;
@@ -35,10 +35,10 @@ function heading(c, text, y = 40) {
 }
 
 function label(c, key, value, x, y, keyColor = '#90caf9') {
-  c.font = 'bold 20px monospace';
+  c.font = 'bold 20px Inter, sans-serif';
   c.fillStyle = keyColor;
   c.fillText(key, x, y);
-  c.font = '20px monospace';
+  c.font = '20px Inter, sans-serif';
   c.fillStyle = TEXT;
   c.fillText(value, x + c.measureText(key).width + 10, y);
 }
@@ -80,11 +80,11 @@ export function renderStatusPanel() {
   c.fillRect(30, y, PANEL_W - 60, 180);
   y += 30;
   c.fillStyle = HEADING;
-  c.font = 'bold 22px monospace';
+  c.font = 'bold 22px Inter, sans-serif';
   c.fillText('Description', 50, y);
   y += 30;
   c.fillStyle = TEXT;
-  c.font = '20px monospace';
+  c.font = '20px Inter, sans-serif';
   // word-wrap the description
   const words = INCIDENT.shortDescription.split(' ');
   let line = '';
@@ -107,7 +107,7 @@ export function renderRespondersPanel() {
   // column headers
   y += 10;
   c.fillStyle = '#90caf9';
-  c.font = 'bold 18px monospace';
+  c.font = 'bold 18px Inter, sans-serif';
   c.fillText('Name',   40, y);
   c.fillText('Role',   260, y);
   c.fillText('Team',   520, y);
@@ -121,7 +121,7 @@ export function renderRespondersPanel() {
     // row bg
     c.fillStyle = ACCENT;
     c.fillRect(30, y - 20, PANEL_W - 60, 36);
-    c.font = '19px monospace';
+    c.font = '19px Inter, sans-serif';
     c.fillStyle = TEXT;
     c.fillText(r.name,  40, y);
     c.fillText(r.role,  260, y);
@@ -134,7 +134,7 @@ export function renderRespondersPanel() {
   // participant count
   y += 30;
   c.fillStyle = HEADING;
-  c.font = 'bold 24px monospace';
+  c.font = 'bold 24px Inter, sans-serif';
   c.fillText(`Total participants: ${RESPONDERS.length}`, 40, y);
 
   return canvas;
@@ -151,11 +151,11 @@ export function renderTasksPanel() {
     c.fillStyle = ACCENT;
     c.fillRect(30, y - 18, PANEL_W - 60, 100);
 
-    c.font = 'bold 20px monospace';
+    c.font = 'bold 20px Inter, sans-serif';
     c.fillStyle = TEXT;
     c.fillText(`#${t.id}  ${t.task}`, 50, y + 4);
 
-    c.font = '17px monospace';
+    c.font = '17px Inter, sans-serif';
     c.fillStyle = '#90caf9';
     c.fillText(`Assigned: ${t.assignedTo}`, 50, y + 32);
 
@@ -186,10 +186,10 @@ export function renderTimelinePanel() {
       c.strokeStyle = '#334155'; c.lineWidth = 2;
       c.beginPath(); c.moveTo(dotX, y + 12); c.lineTo(dotX, y + 62); c.stroke();
     }
-    c.font = 'bold 20px monospace';
+    c.font = 'bold 20px Inter, sans-serif';
     c.fillStyle = HEADING;
     c.fillText(e.time, 80, y + 8);
-    c.font = '18px monospace';
+    c.font = '18px Inter, sans-serif';
     c.fillStyle = TEXT;
     // word-wrap event text
     const words = e.event.split(' ');
@@ -213,7 +213,7 @@ export function renderMonitoringPanel() {
 
   y += 10;
   c.fillStyle = '#90caf9';
-  c.font = 'bold 18px monospace';
+  c.font = 'bold 18px Inter, sans-serif';
   c.fillText('Service',     40, y);
   c.fillText('Status',      340, y);
   c.fillText('Metric',      540, y);
@@ -226,13 +226,13 @@ export function renderMonitoringPanel() {
   MONITORING.forEach(m => {
     c.fillStyle = ACCENT;
     c.fillRect(30, y - 20, PANEL_W - 60, 38);
-    c.font = '19px monospace';
+    c.font = '19px Inter, sans-serif';
     c.fillStyle = TEXT;
     c.fillText(m.service,   40, y);
     c.fillStyle = statusColor(m.status);
-    c.font = 'bold 19px monospace';
+    c.font = 'bold 19px Inter, sans-serif';
     c.fillText(m.status,    340, y);
-    c.font = '19px monospace';
+    c.font = '19px Inter, sans-serif';
     c.fillStyle = TEXT;
     c.fillText(m.metric,    540, y);
     c.fillText(m.lastCheck, 780, y);
@@ -243,7 +243,7 @@ export function renderMonitoringPanel() {
   const down = MONITORING.filter(m => m.status === 'Down').length;
   const degraded = MONITORING.filter(m => m.status === 'Degraded').length;
   y += 30;
-  c.font = 'bold 22px monospace';
+  c.font = 'bold 22px Inter, sans-serif';
   c.fillStyle = down > 0 ? '#ff5252' : '#69f0ae';
   c.fillText(`▸ ${down} Down   ▸ ${degraded} Degraded   ▸ ${MONITORING.length - down - degraded} Operational`, 40, y);
 

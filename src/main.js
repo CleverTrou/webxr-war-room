@@ -23,7 +23,7 @@ let isPointerLocked = false;
 let yaw = 0, pitch = 0;
 
 // ── init ─────────────────────────────────────────────────────────────
-init();
+document.fonts.ready.then(() => init());
 animate();
 
 function init() {
@@ -212,7 +212,7 @@ function addTextLabel(text, pos, rotY) {
   c.fillStyle = 'rgba(10,25,41,0.85)';
   c.fillRect(0, 0, 512, 64);
   c.fillStyle = '#64ffda';
-  c.font = 'bold 28px monospace';
+  c.font = 'bold 28px Inter, sans-serif';
   c.textAlign = 'center';
   c.fillText(text, 256, 42);
 
