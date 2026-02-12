@@ -16,10 +16,12 @@ let cameraRig;
 let controller0, controller1;
 let raycaster, tempMatrix;
 const teleportMarkers = [];
-const clock = new THREE.Clock();
-let environmentGroup;   // holds all room geometry — hidden in AR mode
-const MOVE_SPEED = 3;  // meters per second for thumbstick locomotion
+let elapsedTime = 0;
+let prevTime = performance.now();
+let environmentGroup;
+const MOVE_SPEED = 3;
 const _moveVec = new THREE.Vector3();
+let hoveredRing = null;
 
 // desktop look
 let isPointerLocked = false;
@@ -30,23 +32,19 @@ const keysDown = {};
 document.fonts.ready.then(() => { init(); animate(); });
 
 function init() {
-  // renderer — alpha:true needed for AR passthrough
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
   document.getElementById('scene-container').appendChild(renderer.domElement);
 
-  // VR / AR button
   const vrButton = VRButton.createButton(renderer);
   document.getElementById('vr-button-container').appendChild(vrButton);
 
-  // scene
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x06101c);
   scene.fog = new THREE.Fog(0x06101c, 18, 35);
 
-  // camera rig (for teleportation)
   cameraRig = new THREE.Group();
   scene.add(cameraRig);
 
@@ -63,12 +61,12 @@ function init() {
   point.position.set(0, 6, 0);
   scene.add(point);
 
-  // ── environment (hidden in AR passthrough) ─────────────────────────
+  // environment
   environmentGroup = new THREE.Group();
   scene.add(environmentGroup);
   buildCommandCenter(environmentGroup);
 
-  // invisible ground plane for raycasting (always present)
+  // invisible ground for raycasting
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(30, 30),
     new THREE.MeshBasicMaterial({ visible: false })
@@ -77,16 +75,26 @@ function init() {
   ground.name = 'ground';
   scene.add(ground);
 
-  // ── information panels ────────────────────────────────────────────
-  const panelDefs = [
-    { render: renderStatusPanel,     pos: [0,   2.2, -4],  label: 'Incident Status' },
-    { render: renderRespondersPanel, pos: [-4,  2.2, -2],  label: 'Active Responders', rotY: Math.PI / 5 },
-    { render: renderTasksPanel,      pos: [4,   2.2, -2],  label: 'Action Items',      rotY: -Math.PI / 5 },
-    { render: renderTimelinePanel,   pos: [-3.5,2.2,  2],  label: 'Incident Timeline',  rotY: Math.PI / 3 },
-    { render: renderMonitoringPanel, pos: [3.5, 2.2,  2],  label: 'Service Monitoring', rotY: -Math.PI / 3 },
+  // ── information panels — 360° circle ───────────────────────────────
+  const panelRenderers = [
+    { render: renderStatusPanel,     label: 'Incident Status' },
+    { render: renderRespondersPanel, label: 'Active Responders' },
+    { render: renderTasksPanel,      label: 'Action Items' },
+    { render: renderTimelinePanel,   label: 'Incident Timeline' },
+    { render: renderMonitoringPanel, label: 'Service Monitoring' },
   ];
 
-  panelDefs.forEach(def => {
+  const PANEL_R    = 4;      // distance from center
+  const PANEL_Y    = 2.2;    // center height
+  const LABEL_Y    = PANEL_Y + 1.6;
+  const panelCount = panelRenderers.length;
+
+  panelRenderers.forEach((def, i) => {
+    const angle = (i / panelCount) * Math.PI * 2;   // evenly spaced
+    const x = Math.sin(angle) * PANEL_R;
+    const z = -Math.cos(angle) * PANEL_R;            // angle 0 = in front (-Z)
+    const rotY = Math.atan2(-x, -z);                 // face center
+
     const canvas  = def.render();
     const texture = new THREE.CanvasTexture(canvas);
     texture.minFilter = THREE.LinearFilter;
@@ -94,58 +102,53 @@ function init() {
     const geo  = new THREE.PlaneGeometry(3.5, 2.625);
     const mat  = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(...def.pos);
-    if (def.rotY) mesh.rotation.y = def.rotY;
+    mesh.position.set(x, PANEL_Y, z);
+    mesh.rotation.y = rotY;
     scene.add(mesh);
 
-    addTextLabel(def.label, [def.pos[0], def.pos[1] + 1.6, def.pos[2]], def.rotY || 0);
+    addTextLabel(def.label, [x, LABEL_Y, z], rotY);
   });
 
   // ── teleport markers ──────────────────────────────────────────────
-  const teleportPositions = [
-    // center
-    [0,    0.01,  0],
-    // inner ring — close viewing positions for each panel
-    [ 0,    0.01, -2.5],    // front of status
-    [-2.5,  0.01, -1.5],    // left-front (responders)
-    [ 2.5,  0.01, -1.5],    // right-front (tasks)
-    [-2.2,  0.01,  1.5],    // left-rear (timeline)
-    [ 2.2,  0.01,  1.5],    // right-rear (monitoring)
-    // mid ring — between panels
-    [-1.5,  0.01,  0],      // left of center
-    [ 1.5,  0.01,  0],      // right of center
-    [ 0,    0.01,  1.5],    // behind center
-    [-3.5,  0.01,  0],      // far left
-    [ 3.5,  0.01,  0],      // far right
-    // outer ring — stepped-back overview positions
-    [ 0,    0.01, -4.5],    // far front
-    [-4,    0.01, -3],      // far left-front
-    [ 4,    0.01, -3],      // far right-front
-    [-4.5,  0.01,  1],      // far left
-    [ 4.5,  0.01,  1],      // far right
-    [-3,    0.01,  3.5],    // far left-rear
-    [ 3,    0.01,  3.5],    // far right-rear
-    [ 0,    0.01,  4],      // far rear center
-    // corridor positions
-    [-1,    0.01, -4],      // left of status panel
-    [ 1,    0.01, -4],      // right of status panel
-  ];
+  const teleportPositions = [[0, 0.01, 0]];  // center
+
+  // inner ring — close reading distance from each panel
+  for (let i = 0; i < panelCount; i++) {
+    const a = (i / panelCount) * Math.PI * 2;
+    teleportPositions.push([Math.sin(a) * 2.2, 0.01, -Math.cos(a) * 2.2]);
+  }
+  // inner ring — between panels
+  for (let i = 0; i < panelCount; i++) {
+    const a = ((i + 0.5) / panelCount) * Math.PI * 2;
+    teleportPositions.push([Math.sin(a) * 2.0, 0.01, -Math.cos(a) * 2.0]);
+  }
+  // outer ring — stepped back from each panel
+  for (let i = 0; i < panelCount; i++) {
+    const a = (i / panelCount) * Math.PI * 2;
+    teleportPositions.push([Math.sin(a) * 5.0, 0.01, -Math.cos(a) * 5.0]);
+  }
+  // outer ring — between panels
+  for (let i = 0; i < panelCount; i++) {
+    const a = ((i + 0.5) / panelCount) * Math.PI * 2;
+    teleportPositions.push([Math.sin(a) * 5.0, 0.01, -Math.cos(a) * 5.0]);
+  }
 
   teleportPositions.forEach(pos => {
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(0.18, 0.26, 32),
-      new THREE.MeshBasicMaterial({ color: 0x80ffea, side: THREE.DoubleSide, transparent: true, opacity: 0.7 })
+      new THREE.MeshBasicMaterial({ color: 0x80ffea, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
     );
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(...pos);
     ring.userData.isTeleport = true;
     ring.userData.target = new THREE.Vector3(...pos);
+    ring.userData.baseOpacity = 0.5;
     scene.add(ring);
     teleportMarkers.push(ring);
 
     const disc = new THREE.Mesh(
       new THREE.CircleGeometry(0.18, 32),
-      new THREE.MeshBasicMaterial({ color: 0x80ffea, transparent: true, opacity: 0.15 })
+      new THREE.MeshBasicMaterial({ color: 0x80ffea, transparent: true, opacity: 0.1 })
     );
     disc.rotation.x = -Math.PI / 2;
     disc.position.set(pos[0], pos[1] + 0.005, pos[2]);
@@ -187,15 +190,39 @@ function init() {
   });
   document.addEventListener('pointerlockchange', () => {
     isPointerLocked = (document.pointerLockElement === renderer.domElement);
+    renderer.domElement.style.cursor = isPointerLocked ? 'none' : '';
   });
   document.addEventListener('mousemove', e => {
-    if (!isPointerLocked) return;
-    yaw   -= e.movementX * 0.002;
-    pitch -= e.movementY * 0.002;
-    pitch  = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+    if (isPointerLocked) {
+      yaw   -= e.movementX * 0.002;
+      pitch -= e.movementY * 0.002;
+      pitch  = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+    } else if (!renderer.xr.isPresenting) {
+      // hover detection for teleport rings
+      const rect = renderer.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      );
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObjects(teleportMarkers);
+      const newHover = hits.length > 0 ? hits[0].object : null;
+      if (newHover !== hoveredRing) {
+        if (hoveredRing) {
+          hoveredRing.material.color.setHex(0x80ffea);
+          hoveredRing.scale.set(1, 1, 1);
+        }
+        hoveredRing = newHover;
+        if (hoveredRing) {
+          hoveredRing.material.color.setHex(0xffffff);
+          hoveredRing.scale.set(1.4, 1.4, 1.4);
+        }
+      }
+      renderer.domElement.style.cursor = hoveredRing ? 'pointer' : '';
+    }
   });
 
-  // pointer-locked mode: click teleports to what you're looking at
+  // pointer-locked: click to teleport to crosshair target
   document.addEventListener('mousedown', e => {
     if (!isPointerLocked || renderer.xr.isPresenting) return;
     const mouse = new THREE.Vector2(0, 0);
@@ -207,7 +234,7 @@ function init() {
     }
   });
 
-  // non-locked mode: click directly on rings with mouse cursor
+  // non-locked: click directly on rings
   renderer.domElement.addEventListener('mousedown', e => {
     if (isPointerLocked || renderer.xr.isPresenting) return;
     const rect = renderer.domElement.getBoundingClientRect();
@@ -220,11 +247,11 @@ function init() {
     if (hits.length > 0) {
       const target = hits[0].object.userData.target;
       cameraRig.position.set(target.x, 0, target.z);
-      justTeleported = true;  // prevent pointer lock on this click
+      justTeleported = true;
     }
   });
 
-  // WASD keyboard movement (desktop)
+  // WASD
   document.addEventListener('keydown', e => { keysDown[e.code] = true; });
   document.addEventListener('keyup',   e => { keysDown[e.code] = false; });
 
@@ -235,11 +262,10 @@ function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // ── AR passthrough detection ──────────────────────────────────────
+  // AR passthrough
   renderer.xr.addEventListener('sessionstart', () => {
     const session = renderer.xr.getSession();
     if (session && session.environmentBlendMode === 'alpha-blend') {
-      // AR passthrough device — hide room, clear background
       environmentGroup.visible = false;
       scene.background = null;
       scene.fog = null;
@@ -263,7 +289,7 @@ function buildCommandCenter(group) {
   const glowDim    = new THREE.MeshBasicMaterial({ color: 0x2a6060 });
   const screenGlow = new THREE.MeshBasicMaterial({ color: 0x0a2a3a });
 
-  // ── floor ──────────────────────────────────────────────────────────
+  // floor
   const floor = new THREE.Mesh(
     new THREE.CircleGeometry(12, 64),
     new THREE.MeshStandardMaterial({ color: 0x0e1a2a, roughness: 0.9, metalness: 0.2 })
@@ -272,34 +298,25 @@ function buildCommandCenter(group) {
   floor.position.y = -0.01;
   group.add(floor);
 
-  // floor accent ring
-  const floorRing = new THREE.Mesh(
-    new THREE.RingGeometry(5.5, 5.6, 64),
-    glowDim
-  );
+  const floorRing = new THREE.Mesh(new THREE.RingGeometry(5.5, 5.6, 64), glowDim);
   floorRing.rotation.x = -Math.PI / 2;
   floorRing.position.y = 0.005;
   group.add(floorRing);
 
-  // center floor emblem
-  const centerDisc = new THREE.Mesh(
-    new THREE.RingGeometry(0.8, 1.0, 6),
-    glowDim
-  );
+  const centerDisc = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.0, 6), glowDim);
   centerDisc.rotation.x = -Math.PI / 2;
   centerDisc.position.y = 0.005;
   group.add(centerDisc);
 
-  // ── circular wall ──────────────────────────────────────────────────
-  const wallGeo = new THREE.CylinderGeometry(11, 11, 8, 48, 1, true);
-  const wallMat = new THREE.MeshStandardMaterial({
-    color: 0x141e30, roughness: 0.85, metalness: 0.2, side: THREE.BackSide
-  });
-  const wall = new THREE.Mesh(wallGeo, wallMat);
+  // circular wall
+  const wall = new THREE.Mesh(
+    new THREE.CylinderGeometry(11, 11, 8, 48, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0x141e30, roughness: 0.85, metalness: 0.2, side: THREE.BackSide })
+  );
   wall.position.y = 4;
   group.add(wall);
 
-  // ── ceiling ────────────────────────────────────────────────────────
+  // ceiling
   const ceiling = new THREE.Mesh(
     new THREE.CircleGeometry(11, 48),
     new THREE.MeshStandardMaterial({ color: 0x0c1520, roughness: 0.9, metalness: 0.1, side: THREE.BackSide })
@@ -308,16 +325,12 @@ function buildCommandCenter(group) {
   ceiling.position.y = 8;
   group.add(ceiling);
 
-  // ceiling light ring
-  const ceilRing = new THREE.Mesh(
-    new THREE.RingGeometry(3, 3.15, 48),
-    glowCyan
-  );
+  const ceilRing = new THREE.Mesh(new THREE.RingGeometry(3, 3.15, 48), glowCyan);
   ceilRing.rotation.x = Math.PI / 2;
   ceilRing.position.y = 7.98;
   group.add(ceilRing);
 
-  // ── accent light strips on wall (horizontal bands) ─────────────────
+  // wall accent strips
   [1.0, 4.0, 7.0].forEach(h => {
     const strip = new THREE.Mesh(
       new THREE.CylinderGeometry(10.95, 10.95, 0.04, 48, 1, true),
@@ -327,7 +340,7 @@ function buildCommandCenter(group) {
     group.add(strip);
   });
 
-  // ── console banks around perimeter ─────────────────────────────────
+  // console banks
   const consoleCount = 12;
   for (let i = 0; i < consoleCount; i++) {
     const angle = (i / consoleCount) * Math.PI * 2;
@@ -335,51 +348,31 @@ function buildCommandCenter(group) {
     const x = Math.sin(angle) * r;
     const z = Math.cos(angle) * r;
 
-    // console body
-    const consoleBody = new THREE.Mesh(
-      new THREE.BoxGeometry(1.8, 1.2, 0.6),
-      medMetal
-    );
+    const consoleBody = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.2, 0.6), medMetal);
     consoleBody.position.set(x, 0.6, z);
     consoleBody.lookAt(0, 0.6, 0);
     group.add(consoleBody);
 
-    // console top (angled surface)
-    const top = new THREE.Mesh(
-      new THREE.BoxGeometry(1.6, 0.05, 0.5),
-      lightTrim
-    );
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.05, 0.5), lightTrim);
     top.position.set(x, 1.22, z);
     top.lookAt(0, 1.22, 0);
     top.rotation.x -= 0.3;
     group.add(top);
 
-    // screen on console
-    const screen = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.4, 0.8),
-      screenGlow
-    );
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.8), screenGlow);
     const sx = Math.sin(angle) * (r - 0.31);
     const sz = Math.cos(angle) * (r - 0.31);
     screen.position.set(sx, 2.0, sz);
     screen.lookAt(0, 2.0, 0);
     group.add(screen);
 
-    // screen border glow
-    const border = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.5, 0.9),
-      glowDim
-    );
-    border.position.set(sx, 2.0, sz + (Math.cos(angle) > 0 ? -0.001 : 0.001));
-    border.lookAt(0, 2.0, 0);
-    border.position.z = sz; // re-center
+    const border = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.9), glowDim);
     const bx = Math.sin(angle) * (r - 0.32);
     const bz = Math.cos(angle) * (r - 0.32);
     border.position.set(bx, 2.0, bz);
     border.lookAt(0, 2.0, 0);
     group.add(border);
 
-    // small indicator lights on console face
     for (let row = 0; row < 3; row++) {
       const light = new THREE.Mesh(
         new THREE.CircleGeometry(0.03, 8),
@@ -393,22 +386,18 @@ function buildCommandCenter(group) {
     }
   }
 
-  // ── tall equipment racks between some consoles ─────────────────────
+  // tall equipment racks
   for (let i = 0; i < 6; i++) {
     const angle = (i / 6) * Math.PI * 2 + Math.PI / 6;
     const r = 10.2;
     const x = Math.sin(angle) * r;
     const z = Math.cos(angle) * r;
 
-    const rack = new THREE.Mesh(
-      new THREE.BoxGeometry(0.5, 5, 0.4),
-      darkMetal
-    );
+    const rack = new THREE.Mesh(new THREE.BoxGeometry(0.5, 5, 0.4), darkMetal);
     rack.position.set(x, 2.5, z);
     rack.lookAt(0, 2.5, 0);
     group.add(rack);
 
-    // rack lights
     for (let j = 0; j < 8; j++) {
       const led = new THREE.Mesh(
         new THREE.CircleGeometry(0.02, 6),
@@ -422,13 +411,9 @@ function buildCommandCenter(group) {
     }
   }
 
-  // ── overhead point lights for atmosphere ───────────────────────────
-  const overhead1 = new THREE.PointLight(0x80ffea, 0.3, 15);
-  overhead1.position.set(0, 7, 0);
-  group.add(overhead1);
-  const overhead2 = new THREE.PointLight(0x3060a0, 0.4, 20);
-  overhead2.position.set(0, 5, 0);
-  group.add(overhead2);
+  // overhead lights
+  group.add(Object.assign(new THREE.PointLight(0x80ffea, 0.3, 15), { position: new THREE.Vector3(0, 7, 0) }));
+  group.add(Object.assign(new THREE.PointLight(0x3060a0, 0.4, 20), { position: new THREE.Vector3(0, 5, 0) }));
 }
 
 // ── VR teleport handler ──────────────────────────────────────────────
@@ -466,7 +451,7 @@ function addTextLabel(text, pos, rotY) {
   scene.add(mesh);
 }
 
-// ── HUD overlay (desktop) ────────────────────────────────────────────
+// ── HUD ──────────────────────────────────────────────────────────────
 function updateHud() {
   const el = document.getElementById('hud');
   if (!el) return;
@@ -475,12 +460,11 @@ function updateHud() {
     <strong style="color:#80ffea">WebXR Incident War Room</strong><br>
     VR: ${vrSupported ? '✓ Supported' : '✗ Not available'}<br><br>
     <em>Desktop:</em> Click a cyan ring to teleport<br>
-    Click elsewhere to lock mouse → look around<br>
-    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to walk<br>
-    While locked: click to teleport to crosshair target<br>
-    Press <kbd>Esc</kbd> to release mouse<br><br>
+    Click empty space to lock mouse → look around<br>
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys to walk<br>
+    Press <kbd>Esc</kbd> to unlock mouse<br><br>
     <em>Quest 2:</em> Click "Enter VR" button<br>
-    Point controller at cyan circles → pull trigger<br>
+    Trigger on cyan rings to teleport<br>
     Push thumbstick to walk freely
   `;
 }
@@ -491,40 +475,49 @@ function animate() {
 }
 
 function render() {
-  const t = clock.getElapsedTime();
-  const dt = clock.getDelta();
+  // manual delta time — avoids Three.js Clock getElapsedTime/getDelta conflict
+  const now = performance.now();
+  const dt  = (now - prevTime) / 1000;
+  prevTime  = now;
+  elapsedTime += dt;
 
+  // pulse teleport markers
   teleportMarkers.forEach((m, i) => {
-    m.material.opacity = 0.45 + 0.3 * Math.sin(t * 2 + i);
+    if (m === hoveredRing) {
+      m.material.opacity = 1.0;
+    } else {
+      m.material.opacity = 0.35 + 0.2 * Math.sin(elapsedTime * 2 + i);
+    }
   });
 
-  // ── thumbstick smooth locomotion (VR) ──────────────────────────────
+  // VR thumbstick locomotion
   if (renderer.xr.isPresenting) {
     const session = renderer.xr.getSession();
     if (session) {
       for (const source of session.inputSources) {
         if (!source.gamepad) continue;
         const axes = source.gamepad.axes;
-        // Quest thumbstick is axes[2],axes[3]; apply deadzone
         const x = Math.abs(axes[2]) > 0.15 ? axes[2] : 0;
         const z = Math.abs(axes[3]) > 0.15 ? axes[3] : 0;
         if (x !== 0 || z !== 0) {
-          // move relative to head orientation
           const headQuat = camera.getWorldQuaternion(new THREE.Quaternion());
           _moveVec.set(x, 0, z).applyQuaternion(headQuat);
-          _moveVec.y = 0; // stay on ground plane
+          _moveVec.y = 0;
           _moveVec.normalize().multiplyScalar(MOVE_SPEED * dt * Math.max(Math.abs(x), Math.abs(z)));
           cameraRig.position.add(_moveVec);
-          break; // use first controller with input
+          break;
         }
       }
     }
   }
 
-  // desktop look + WASD movement
+  // desktop look (requires pointer lock)
   if (!renderer.xr.isPresenting && isPointerLocked) {
     camera.rotation.set(pitch, yaw, 0, 'YXZ');
-    // WASD movement
+  }
+
+  // desktop WASD / arrow keys (always active, no pointer lock needed)
+  if (!renderer.xr.isPresenting) {
     let mx = 0, mz = 0;
     if (keysDown['KeyW'] || keysDown['ArrowUp'])    mz -= 1;
     if (keysDown['KeyS'] || keysDown['ArrowDown'])   mz += 1;
