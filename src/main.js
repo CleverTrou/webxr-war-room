@@ -818,7 +818,7 @@ function buildCommandCenter(group) {
   // vertical pipe runs (between every other wall segment)
   for (let i = 0; i < 6; i++) {
     const angle = (i / 6) * Math.PI * 2 + Math.PI / 12;
-    const pipeR = wallR - 0.2;
+    const pipeR = wallR - 0.6;
     const px = Math.sin(angle) * pipeR;
     const pz = -Math.cos(angle) * pipeR;
     const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, wallH, 8), steel);
@@ -836,7 +836,7 @@ function buildCommandCenter(group) {
   // fire extinguisher (on one wall)
   {
     const fAngle = Math.PI * 0.35;
-    const fR = wallR - 0.25;
+    const fR = wallR - 0.6;
     const fx = Math.sin(fAngle) * fR;
     const fz = -Math.cos(fAngle) * fR;
     const extBody = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.35, 8),
@@ -851,7 +851,7 @@ function buildCommandCenter(group) {
   // wall clock
   {
     const cAngle = Math.PI * 1.15;
-    const cR = wallR - 0.2;
+    const cR = wallR - 0.6;
     const cx = Math.sin(cAngle) * cR;
     const cz = -Math.cos(cAngle) * cR;
     const clockFace = new THREE.Mesh(new THREE.CircleGeometry(0.25, 24), cream);
@@ -1025,6 +1025,13 @@ function render() {
           _moveVec.y = 0;
           _moveVec.normalize().multiplyScalar(MOVE_SPEED * dt * Math.max(Math.abs(x), Math.abs(z)));
           cameraRig.position.add(_moveVec);
+          // boundary clamp — stay inside walls
+          const _dist = Math.sqrt(cameraRig.position.x ** 2 + cameraRig.position.z ** 2);
+          if (_dist > 11.3) {
+            const _scale = 11.3 / _dist;
+            cameraRig.position.x *= _scale;
+            cameraRig.position.z *= _scale;
+          }
           break;
         }
       }
@@ -1047,6 +1054,13 @@ function render() {
       _moveVec.set(mx, 0, mz).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
       _moveVec.multiplyScalar(MOVE_SPEED * dt);
       cameraRig.position.add(_moveVec);
+      // boundary clamp — stay inside walls
+      const _dsk = Math.sqrt(cameraRig.position.x ** 2 + cameraRig.position.z ** 2);
+      if (_dsk > 11.3) {
+        const _sc = 11.3 / _dsk;
+        cameraRig.position.x *= _sc;
+        cameraRig.position.z *= _sc;
+      }
     }
   }
 
