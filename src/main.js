@@ -301,250 +301,635 @@ function init() {
 // ── command center environment ───────────────────────────────────────
 function buildCommandCenter(group) {
   // ── materials: cold-war bunker palette ──
-  const concrete     = new THREE.MeshStandardMaterial({ color: 0x8a8a85, roughness: 0.95, metalness: 0.05 });
-  const concreteDark = new THREE.MeshStandardMaterial({ color: 0x7a7a75, roughness: 0.95, metalness: 0.05 });
-  const steel        = new THREE.MeshStandardMaterial({ color: 0x8a9098, roughness: 0.5, metalness: 0.7 });
-  const darkSteel    = new THREE.MeshStandardMaterial({ color: 0x4e5358, roughness: 0.6, metalness: 0.6 });
+  const concrete     = new THREE.MeshStandardMaterial({ color: 0x908a82, roughness: 0.95, metalness: 0.05 });
+  const concreteLt   = new THREE.MeshStandardMaterial({ color: 0xa09a92, roughness: 0.95, metalness: 0.05 });
+  const steel        = new THREE.MeshStandardMaterial({ color: 0x8a9098, roughness: 0.4, metalness: 0.7 });
+  const darkSteel    = new THREE.MeshStandardMaterial({ color: 0x50555a, roughness: 0.5, metalness: 0.6 });
   const olive        = new THREE.MeshStandardMaterial({ color: 0x6a7560, roughness: 0.8, metalness: 0.2 });
   const cream        = new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.85, metalness: 0.05 });
+  const beige        = new THREE.MeshStandardMaterial({ color: 0xc8b898, roughness: 0.8, metalness: 0.1 });
+  const black        = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9, metalness: 0.1 });
+  const brown        = new THREE.MeshStandardMaterial({ color: 0x5a4030, roughness: 0.85, metalness: 0.1 });
   const crtGreen     = new THREE.MeshBasicMaterial({ color: 0x33ff66 });
-  const crtDim       = new THREE.MeshBasicMaterial({ color: 0x1a6633 });
+  const crtDim       = new THREE.MeshBasicMaterial({ color: 0x229944 });
   const crtAmber     = new THREE.MeshBasicMaterial({ color: 0xffaa22 });
   const redLight     = new THREE.MeshBasicMaterial({ color: 0xff3333 });
   const warmWhite    = new THREE.MeshBasicMaterial({ color: 0xfff8e8 });
-  const darkScreen   = new THREE.MeshBasicMaterial({ color: 0x0a1a0a });
+  const darkScreen   = new THREE.MeshBasicMaterial({ color: 0x0c3010 });
+  const screenGlow   = new THREE.MeshBasicMaterial({ color: 0x1a5a20 });
+  const blueGrey     = new THREE.MeshStandardMaterial({ color: 0x607080, roughness: 0.7, metalness: 0.3 });
+  const yellow       = new THREE.MeshStandardMaterial({ color: 0xddcc44, roughness: 0.7, metalness: 0.1 });
 
-  // ── floor: industrial tile pattern ──
+  // helper: add a mesh to the group
+  function box(w, h, d, mat, x, y, z) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(x, y, z);
+    return m;
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // FLOOR
+  // ══════════════════════════════════════════════════════════════════
   const floor = new THREE.Mesh(
     new THREE.CircleGeometry(14, 64),
-    new THREE.MeshStandardMaterial({ color: 0x5e5e5a, roughness: 0.9, metalness: 0.1 })
+    new THREE.MeshStandardMaterial({ color: 0x686862, roughness: 0.9, metalness: 0.1 })
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -0.01;
   group.add(floor);
 
-  // floor grid lines (tile look)
-  for (let i = -12; i <= 12; i += 2) {
-    const lineH = new THREE.Mesh(new THREE.BoxGeometry(28, 0.005, 0.03), darkSteel);
-    lineH.position.set(0, 0.001, i);
-    group.add(lineH);
-    const lineV = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.005, 28), darkSteel);
-    lineV.position.set(i, 0.001, 0);
-    group.add(lineV);
+  // tile grid lines
+  for (let i = -12; i <= 12; i += 1.5) {
+    const h = new THREE.Mesh(new THREE.BoxGeometry(28, 0.005, 0.02), darkSteel);
+    h.position.set(0, 0.001, i);
+    group.add(h);
+    const v = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.005, 28), darkSteel);
+    v.position.set(i, 0.001, 0);
+    group.add(v);
   }
 
-  // raised center platform (commander's station)
-  const platform = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.8, 2.0, 0.15, 8),
-    steel
-  );
-  platform.position.y = 0.075;
-  group.add(platform);
+  // raised center platform
+  const plat = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.8, 0.12, 8), steel);
+  plat.position.y = 0.06;
+  group.add(plat);
 
-  // ── walls: octagonal bunker ──
-  const wallR = 12;
-  const wallH = 6;
-  const wallSides = 12;
+  // yellow/black hazard stripe ring around platform
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    const stripe = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.005, 0.12),
+      i % 2 === 0 ? yellow : black
+    );
+    stripe.position.set(Math.sin(a) * 2.0, 0.005, -Math.cos(a) * 2.0);
+    stripe.rotation.y = a;
+    group.add(stripe);
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // WALLS — 12-sided bunker
+  // ══════════════════════════════════════════════════════════════════
+  const wallR = 12, wallH = 6, wallSides = 12;
   for (let i = 0; i < wallSides; i++) {
-    const angle = (i / wallSides) * Math.PI * 2;
-    const nextAngle = ((i + 1) / wallSides) * Math.PI * 2;
-    const x1 = Math.sin(angle) * wallR, z1 = -Math.cos(angle) * wallR;
-    const x2 = Math.sin(nextAngle) * wallR, z2 = -Math.cos(nextAngle) * wallR;
+    const a1 = (i / wallSides) * Math.PI * 2;
+    const a2 = ((i + 1) / wallSides) * Math.PI * 2;
+    const x1 = Math.sin(a1) * wallR, z1 = -Math.cos(a1) * wallR;
+    const x2 = Math.sin(a2) * wallR, z2 = -Math.cos(a2) * wallR;
     const cx = (x1 + x2) / 2, cz = (z1 + z2) / 2;
     const segW = Math.sqrt((x2 - x1) ** 2 + (z2 - z1) ** 2);
-    const wallPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(segW, wallH, 0.3),
-      i % 3 === 0 ? concreteDark : concrete
-    );
-    wallPanel.position.set(cx, wallH / 2, cz);
-    wallPanel.lookAt(0, wallH / 2, 0);
-    group.add(wallPanel);
-  }
 
-  // ── ceiling: dropped panels with fluorescent lights ──
-  const ceiling = new THREE.Mesh(
-    new THREE.CircleGeometry(12.5, 48),
-    new THREE.MeshStandardMaterial({ color: 0x7a7a75, roughness: 0.9, metalness: 0.05, side: THREE.BackSide })
-  );
-  ceiling.rotation.x = Math.PI / 2;
-  ceiling.position.y = wallH;
-  group.add(ceiling);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(segW, wallH, 0.3), concrete);
+    panel.position.set(cx, wallH / 2, cz);
+    panel.lookAt(0, wallH / 2, 0);
+    group.add(panel);
 
-  // fluorescent light strips (cross pattern)
-  const lightStrips = [
-    { pos: [0, wallH - 0.05, -3], size: [6, 0.05, 0.3] },
-    { pos: [0, wallH - 0.05, 3], size: [6, 0.05, 0.3] },
-    { pos: [-3, wallH - 0.05, 0], size: [0.3, 0.05, 6] },
-    { pos: [3, wallH - 0.05, 0], size: [0.3, 0.05, 6] },
-    { pos: [0, wallH - 0.05, 0], size: [8, 0.05, 0.3] },
-    { pos: [0, wallH - 0.05, 0], size: [0.3, 0.05, 8] },
-  ];
-  lightStrips.forEach(ls => {
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(...ls.size), warmWhite);
-    strip.position.set(...ls.pos);
-    group.add(strip);
-  });
-
-  // ── tiered console desks (outer ring) ──
-  const deskCount = 12;
-  for (let i = 0; i < deskCount; i++) {
-    const angle = (i / deskCount) * Math.PI * 2;
-    const r = 9.5;
-    const x = Math.sin(angle) * r;
-    const z = -Math.cos(angle) * r;
-
-    // desk body
-    const desk = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.8, 0.8), olive);
-    desk.position.set(x, 0.4, z);
-    desk.lookAt(0, 0.4, 0);
-    group.add(desk);
-
-    // desk top surface
-    const surface = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.04, 0.7), cream);
-    surface.position.set(x, 0.82, z);
-    surface.lookAt(0, 0.82, 0);
-    group.add(surface);
-
-    // CRT monitor (boxy)
-    const monR = r - 0.25;
-    const mx = Math.sin(angle) * monR;
-    const mz = -Math.cos(angle) * monR;
-    const monitor = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.5), darkSteel);
-    monitor.position.set(mx, 1.15, mz);
-    monitor.lookAt(0, 1.15, 0);
-    group.add(monitor);
-
-    // CRT screen face
-    const screenR = r - 0.51;
-    const sx = Math.sin(angle) * screenR;
-    const sz = -Math.cos(angle) * screenR;
-    const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.35), darkScreen);
-    screen.position.set(sx, 1.17, sz);
-    screen.lookAt(0, 1.17, 0);
-    group.add(screen);
-
-    // blinking indicator lights on desk front
-    for (let j = 0; j < 4; j++) {
-      const indicator = new THREE.Mesh(
-        new THREE.CircleGeometry(0.025, 8),
-        j === 0 ? redLight : (j === 1 ? crtAmber : crtGreen)
-      );
-      const ir = r + 0.01;
-      const ix = Math.sin(angle) * ir;
-      const iz = -Math.cos(angle) * ir;
-      indicator.position.set(
-        ix + Math.cos(angle) * (j - 1.5) * 0.15,
-        0.65,
-        iz + Math.sin(angle) * (j - 1.5) * 0.15
-      );
-      indicator.lookAt(
-        ix + Math.cos(angle) * (j - 1.5) * 0.15 + Math.sin(angle),
-        0.65,
-        iz + Math.sin(angle) * (j - 1.5) * 0.15 - Math.cos(angle)
-      );
-      group.add(indicator);
+    // horizontal concrete trim strips at 1/3 and 2/3 height
+    for (const ht of [2.0, 4.0]) {
+      const faceMid = (wallR - 0.16);
+      const trim = new THREE.Mesh(new THREE.BoxGeometry(segW - 0.1, 0.08, 0.02), concreteLt);
+      const tx = (x1 + x2) / 2 * (faceMid / wallR);
+      const tz = (z1 + z2) / 2 * (faceMid / wallR);
+      trim.position.set(tx, ht, tz);
+      trim.lookAt(0, ht, 0);
+      group.add(trim);
     }
   }
 
-  // ── large wall screens (big boards like Houston) ──
+  // ══════════════════════════════════════════════════════════════════
+  // CEILING with dropped panel grid and fluorescent fixtures
+  // ══════════════════════════════════════════════════════════════════
+  const ceil = new THREE.Mesh(
+    new THREE.CircleGeometry(12.5, 48),
+    new THREE.MeshStandardMaterial({ color: 0x908880, roughness: 0.9, metalness: 0.05, side: THREE.BackSide })
+  );
+  ceil.rotation.x = Math.PI / 2;
+  ceil.position.y = wallH;
+  group.add(ceil);
+
+  // ceiling grid (T-bar)
+  for (let i = -10; i <= 10; i += 2.5) {
+    const bar1 = new THREE.Mesh(new THREE.BoxGeometry(24, 0.06, 0.03), steel);
+    bar1.position.set(0, wallH - 0.03, i);
+    group.add(bar1);
+    const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.06, 24), steel);
+    bar2.position.set(i, wallH - 0.03, 0);
+    group.add(bar2);
+  }
+
+  // fluorescent light fixtures (rectangular boxes with glowing face)
+  const fixturePositions = [
+    [0, 0], [-4, -4], [4, -4], [-4, 4], [4, 4],
+    [-7, 0], [7, 0], [0, -7], [0, 7]
+  ];
+  fixturePositions.forEach(([fx, fz]) => {
+    // fixture housing
+    const housing = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.4), steel);
+    housing.position.set(fx, wallH - 0.08, fz);
+    group.add(housing);
+    // glowing tube
+    const tube = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.02, 0.25), warmWhite);
+    tube.position.set(fx, wallH - 0.13, fz);
+    group.add(tube);
+  });
+
+  // ══════════════════════════════════════════════════════════════════
+  // CONSOLE WORKSTATIONS (12 around perimeter)
+  // ══════════════════════════════════════════════════════════════════
+  const deskCount = 12;
+  for (let i = 0; i < deskCount; i++) {
+    const angle = (i / deskCount) * Math.PI * 2;
+    const r = 9.2;
+    const x = Math.sin(angle) * r;
+    const z = -Math.cos(angle) * r;
+    const fwd = new THREE.Vector3(Math.sin(angle), 0, -Math.cos(angle)); // toward center
+    const right = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+
+    // desk body (L-shaped console)
+    const deskMain = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.75, 0.9), olive);
+    deskMain.position.set(x, 0.375, z);
+    deskMain.lookAt(0, 0.375, 0);
+    group.add(deskMain);
+
+    // desk top
+    const top = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.04, 0.85), cream);
+    top.position.set(x, 0.77, z);
+    top.lookAt(0, 0.77, 0);
+    group.add(top);
+
+    // desk front panel (knee panel) darker
+    const kneePanelR = r + 0.44;
+    const kx = Math.sin(angle) * kneePanelR;
+    const kz = -Math.cos(angle) * kneePanelR;
+    const kneePanel = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 0.04), darkSteel);
+    kneePanel.position.set(kx, 0.35, kz);
+    kneePanel.lookAt(0, 0.35, 0);
+    group.add(kneePanel);
+
+    // CRT monitor — chunky bezel
+    const monR = r - 0.15;
+    const mx = Math.sin(angle) * monR;
+    const mz = -Math.cos(angle) * monR;
+
+    // monitor body (deep CRT box)
+    const monBody = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.42, 0.45), beige);
+    monBody.position.set(mx, 1.0, mz);
+    monBody.lookAt(0, 1.0, 0);
+    group.add(monBody);
+
+    // screen bezel (dark frame)
+    const bezelR = monR - 0.22;
+    const bx = Math.sin(angle) * bezelR;
+    const bz = -Math.cos(angle) * bezelR;
+    const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.38, 0.03), darkSteel);
+    bezel.position.set(bx, 1.0, bz);
+    bezel.lookAt(0, 1.0, 0);
+    group.add(bezel);
+
+    // screen face (dark green CRT)
+    const screenR = monR - 0.24;
+    const sx = Math.sin(angle) * screenR;
+    const sz = -Math.cos(angle) * screenR;
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.38, 0.28), darkScreen);
+    screen.position.set(sx, 1.0, sz);
+    screen.lookAt(0, 1.0, 0);
+    group.add(screen);
+
+    // CRT scan lines on screen
+    for (let sl = 0; sl < 4; sl++) {
+      const slR = monR - 0.245;
+      const slx = Math.sin(angle) * slR;
+      const slz = -Math.cos(angle) * slR;
+      const scan = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.01), crtDim);
+      scan.position.set(slx, 0.88 + sl * 0.08, slz);
+      scan.lookAt(0, 0.88 + sl * 0.08, 0);
+      group.add(scan);
+    }
+
+    // simulated text data lines on screen (bright green "readout")
+    const textWidths = [0.26, 0.18, 0.30, 0.14, 0.22, 0.28];
+    for (let tl = 0; tl < 6; tl++) {
+      const tlR = monR - 0.246;
+      const tlx = Math.sin(angle) * tlR;
+      const tlz = -Math.cos(angle) * tlR;
+      const w = textWidths[(i + tl) % textWidths.length];
+      const textLine = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.008), crtGreen);
+      // offset left to simulate left-aligned text
+      const leftOff = -(0.15 - w / 2);
+      textLine.position.set(
+        tlx + Math.cos(angle) * leftOff,
+        0.87 + tl * 0.042,
+        tlz + Math.sin(angle) * leftOff
+      );
+      textLine.lookAt(
+        Math.cos(angle) * leftOff,
+        0.87 + tl * 0.042,
+        Math.sin(angle) * leftOff
+      );
+      group.add(textLine);
+    }
+
+    // keyboard on desk
+    const kbR = r + 0.1;
+    const kbx = Math.sin(angle) * kbR;
+    const kbz = -Math.cos(angle) * kbR;
+    const keyboard = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.025, 0.15), beige);
+    keyboard.position.set(kbx, 0.8, kbz);
+    keyboard.lookAt(0, 0.8, 0);
+    group.add(keyboard);
+    // key area (darker inset)
+    const keyR = kbR + 0.005;
+    const keyx = Math.sin(angle) * keyR;
+    const keyz = -Math.cos(angle) * keyR;
+    const keys = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.12), darkSteel);
+    keys.position.set(keyx, 0.815, keyz);
+    keys.rotation.x = -Math.PI / 2;
+    group.add(keys);
+
+    // desk phone (to the right of monitor)
+    const phR = r - 0.05;
+    const phx = Math.sin(angle) * phR + Math.cos(angle) * 0.7;
+    const phz = -Math.cos(angle) * phR + Math.sin(angle) * 0.7;
+    const phoneBase = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.22), darkSteel);
+    phoneBase.position.set(phx, 0.81, phz);
+    group.add(phoneBase);
+    const handset = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.2), black);
+    handset.position.set(phx, 0.86, phz);
+    group.add(handset);
+
+    // coffee mug (to the left)
+    const mugR = r + 0.15;
+    const mugx = Math.sin(angle) * mugR - Math.cos(angle) * 0.65;
+    const mugz = -Math.cos(angle) * mugR - Math.sin(angle) * 0.65;
+    const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.09, 8), cream);
+    mug.position.set(mugx, 0.835, mugz);
+    group.add(mug);
+
+    // chair
+    const chairR = r + 0.9;
+    const chx = Math.sin(angle) * chairR;
+    const chz = -Math.cos(angle) * chairR;
+    // seat
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.06, 0.4), brown);
+    seat.position.set(chx, 0.45, chz);
+    seat.lookAt(0, 0.45, 0);
+    group.add(seat);
+    // backrest
+    const backR = chairR + 0.18;
+    const bkx = Math.sin(angle) * backR;
+    const bkz = -Math.cos(angle) * backR;
+    const backrest = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.35, 0.04), brown);
+    backrest.position.set(bkx, 0.7, bkz);
+    backrest.lookAt(0, 0.7, 0);
+    group.add(backrest);
+    // chair pedestal
+    const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.42, 6), darkSteel);
+    pedestal.position.set(chx, 0.22, chz);
+    group.add(pedestal);
+    // chair base star
+    const cbase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 5), darkSteel);
+    cbase.position.set(chx, 0.02, chz);
+    group.add(cbase);
+
+    // indicator light panel on desk front
+    for (let j = 0; j < 5; j++) {
+      const indR = r + 0.46;
+      const ix = Math.sin(angle) * indR + Math.cos(angle) * (j - 2) * 0.12;
+      const iz = -Math.cos(angle) * indR + Math.sin(angle) * (j - 2) * 0.12;
+      const mat = j === 0 ? redLight : (j < 3 ? crtAmber : crtGreen);
+      const ind = new THREE.Mesh(new THREE.CircleGeometry(0.02, 8), mat);
+      ind.position.set(ix, 0.55, iz);
+      ind.lookAt(ix + Math.sin(angle), 0.55, iz - Math.cos(angle));
+      group.add(ind);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // BIG WALL SCREENS (5 — matching panel positions)
+  // ══════════════════════════════════════════════════════════════════
   for (let i = 0; i < 5; i++) {
     const angle = (i / 5) * Math.PI * 2;
-    const sr = wallR - 0.4;
+    const sr = wallR - 0.3;
     const sx = Math.sin(angle) * sr;
     const sz = -Math.cos(angle) * sr;
 
-    // big screen backing
-    const backing = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2.5, 0.1), darkSteel);
-    backing.position.set(sx, 3.8, sz);
-    backing.lookAt(0, 3.8, 0);
-    group.add(backing);
+    // screen frame (thick steel border)
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(4.8, 2.8, 0.15), darkSteel);
+    frame.position.set(sx, 3.8, sz);
+    frame.lookAt(0, 3.8, 0);
+    group.add(frame);
+
+    // inner screen bezel
+    const ibR = sr - 0.08;
+    const ibx = Math.sin(angle) * ibR;
+    const ibz = -Math.cos(angle) * ibR;
+    const innerFrame = new THREE.Mesh(new THREE.BoxGeometry(4.4, 2.4, 0.05), steel);
+    innerFrame.position.set(ibx, 3.8, ibz);
+    innerFrame.lookAt(0, 3.8, 0);
+    group.add(innerFrame);
 
     // screen face
-    const sfr = sr - 0.06;
-    const sfx = Math.sin(angle) * sfr;
-    const sfz = -Math.cos(angle) * sfr;
-    const screenFace = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.2), darkScreen);
+    const sfR = sr - 0.1;
+    const sfx = Math.sin(angle) * sfR;
+    const sfz = -Math.cos(angle) * sfR;
+    const screenFace = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 2.0), screenGlow);
     screenFace.position.set(sfx, 3.8, sfz);
     screenFace.lookAt(0, 3.8, 0);
     group.add(screenFace);
 
-    // green scan line effect (horizontal lines on big screen)
-    for (let line = 0; line < 6; line++) {
-      const lr = sr - 0.07;
+    // CRT phosphor grid lines (horizontal)
+    for (let line = 0; line < 8; line++) {
+      const lr = sr - 0.11;
       const lx = Math.sin(angle) * lr;
       const lz = -Math.cos(angle) * lr;
-      const scanLine = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.8, 0.02),
-        line % 2 === 0 ? crtDim : crtGreen
+      const scan = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.6, 0.015),
+        line % 3 === 0 ? crtGreen : crtDim
       );
-      scanLine.position.set(lx, 2.9 + line * 0.35, lz);
-      scanLine.lookAt(0, 2.9 + line * 0.35, 0);
-      group.add(scanLine);
+      scan.position.set(lx, 2.95 + line * 0.25, lz);
+      scan.lookAt(0, 2.95 + line * 0.25, 0);
+      group.add(scan);
     }
 
-    // "STATUS" label strip above screen
-    const labelR = sr - 0.07;
-    const lbx = Math.sin(angle) * labelR;
-    const lbz = -Math.cos(angle) * labelR;
-    const label = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.15), crtAmber);
-    label.position.set(lbx, 5.15, lbz);
+    // vertical grid lines
+    for (let vl = 0; vl < 5; vl++) {
+      const vlR = sr - 0.11;
+      const vlx = Math.sin(angle) * vlR;
+      const vlz = -Math.cos(angle) * vlR;
+      const vline = new THREE.Mesh(new THREE.PlaneGeometry(0.01, 1.8), crtDim);
+      // offset along the wall face
+      const off = (vl - 2) * 0.8;
+      vline.position.set(
+        vlx + Math.cos(angle) * off,
+        3.8,
+        vlz + Math.sin(angle) * off
+      );
+      vline.lookAt(
+        Math.cos(angle) * off,
+        3.8,
+        Math.sin(angle) * off
+      );
+      group.add(vline);
+    }
+
+    // simulated data blocks on screen (text readout areas)
+    const dataR = sr - 0.12;
+    // left data column - text lines
+    for (let dl = 0; dl < 6; dl++) {
+      const dx = Math.sin(angle) * dataR;
+      const dz = -Math.cos(angle) * dataR;
+      const w = 0.8 + ((i + dl) % 3) * 0.3;
+      const dline = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.04), crtGreen);
+      const leftOff = -1.2;
+      dline.position.set(
+        dx + Math.cos(angle) * leftOff,
+        3.2 + dl * 0.18,
+        dz + Math.sin(angle) * leftOff
+      );
+      dline.lookAt(
+        Math.cos(angle) * leftOff,
+        3.2 + dl * 0.18,
+        Math.sin(angle) * leftOff
+      );
+      group.add(dline);
+    }
+    // right side - bar chart simulation
+    for (let bar = 0; bar < 5; bar++) {
+      const bx = Math.sin(angle) * dataR;
+      const bz = -Math.cos(angle) * dataR;
+      const barH = 0.3 + ((i * 3 + bar * 7) % 5) * 0.2;
+      const barMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.15, barH),
+        bar === 2 ? crtAmber : crtGreen
+      );
+      const rightOff = 0.6 + bar * 0.22;
+      barMesh.position.set(
+        bx + Math.cos(angle) * rightOff,
+        2.95 + barH / 2,
+        bz + Math.sin(angle) * rightOff
+      );
+      barMesh.lookAt(
+        Math.cos(angle) * rightOff,
+        2.95 + barH / 2,
+        Math.sin(angle) * rightOff
+      );
+      group.add(barMesh);
+    }
+
+    // amber status label above screen
+    const labR = sr - 0.11;
+    const labx = Math.sin(angle) * labR;
+    const labz = -Math.cos(angle) * labR;
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.12), crtAmber);
+    label.position.set(labx, 5.15, labz);
     label.lookAt(0, 5.15, 0);
     group.add(label);
+
+    // small red/green status dots flanking label
+    for (const side of [-1, 1]) {
+      const dotR = sr - 0.11;
+      const dx = Math.sin(angle) * dotR + Math.cos(angle) * side * 1.2;
+      const dz = -Math.cos(angle) * dotR + Math.sin(angle) * side * 1.2;
+      const dot = new THREE.Mesh(new THREE.CircleGeometry(0.04, 8), side < 0 ? redLight : crtGreen);
+      dot.position.set(dx, 5.15, dz);
+      dot.lookAt(0, 5.15, 0);
+      group.add(dot);
+    }
   }
 
-  // ── equipment racks (tall cabinets between wall screens) ──
+  // ══════════════════════════════════════════════════════════════════
+  // EQUIPMENT RACKS (between wall screens)
+  // ══════════════════════════════════════════════════════════════════
   for (let i = 0; i < 5; i++) {
     const angle = ((i + 0.5) / 5) * Math.PI * 2;
-    const rr = wallR - 0.5;
+    const rr = wallR - 0.4;
     const rx = Math.sin(angle) * rr;
     const rz = -Math.cos(angle) * rr;
 
-    const rack = new THREE.Mesh(new THREE.BoxGeometry(1.0, 5.0, 0.6), darkSteel);
-    rack.position.set(rx, 2.5, rz);
-    rack.lookAt(0, 2.5, 0);
+    // rack cabinet
+    const rack = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5.2, 0.7), darkSteel);
+    rack.position.set(rx, 2.6, rz);
+    rack.lookAt(0, 2.6, 0);
     group.add(rack);
 
-    // blinking LEDs on rack
-    for (let j = 0; j < 10; j++) {
-      const ledR = rr - 0.31;
-      const lx = Math.sin(angle) * ledR;
-      const lz = -Math.cos(angle) * ledR;
-      const led = new THREE.Mesh(
-        new THREE.CircleGeometry(0.02, 6),
-        j % 3 === 0 ? redLight : (j % 3 === 1 ? crtAmber : crtGreen)
-      );
-      led.position.set(
-        lx + Math.cos(angle) * ((j % 2) - 0.5) * 0.3,
-        0.8 + j * 0.45,
-        lz + Math.sin(angle) * ((j % 2) - 0.5) * 0.3
-      );
-      led.lookAt(0, 0.8 + j * 0.45, 0);
+    // rack face plate (slightly lighter)
+    const fpR = rr - 0.36;
+    const fpx = Math.sin(angle) * fpR;
+    const fpz = -Math.cos(angle) * fpR;
+    const faceplate = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 4.8), blueGrey);
+    faceplate.position.set(fpx, 2.6, fpz);
+    faceplate.lookAt(0, 2.6, 0);
+    group.add(faceplate);
+
+    // rack unit dividers (horizontal lines)
+    for (let ru = 0; ru < 12; ru++) {
+      const ruR = rr - 0.37;
+      const rux = Math.sin(angle) * ruR;
+      const ruz = -Math.cos(angle) * ruR;
+      const divider = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.01), steel);
+      divider.position.set(rux, 0.5 + ru * 0.4, ruz);
+      divider.lookAt(0, 0.5 + ru * 0.4, 0);
+      group.add(divider);
+    }
+
+    // blinking LEDs (varied colors)
+    for (let j = 0; j < 12; j++) {
+      const ledR = rr - 0.38;
+      const row = Math.floor(j / 3);
+      const col = j % 3;
+      const lx = Math.sin(angle) * ledR + Math.cos(angle) * (col - 1) * 0.2;
+      const lz = -Math.cos(angle) * ledR + Math.sin(angle) * (col - 1) * 0.2;
+      const mat = col === 0 ? redLight : (col === 1 ? crtAmber : crtGreen);
+      const led = new THREE.Mesh(new THREE.CircleGeometry(0.02, 6), mat);
+      led.position.set(lx, 0.7 + row * 1.1, lz);
+      led.lookAt(0, 0.7 + row * 1.1, 0);
       group.add(led);
+    }
+
+    // ventilation grille at top
+    const ventR = rr - 0.37;
+    const vx = Math.sin(angle) * ventR;
+    const vz = -Math.cos(angle) * ventR;
+    for (let vs = 0; vs < 4; vs++) {
+      const vslot = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.02), black);
+      vslot.position.set(vx, 4.8 + vs * 0.08, vz);
+      vslot.lookAt(0, 4.8 + vs * 0.08, 0);
+      group.add(vslot);
     }
   }
 
-  // ── lighting: bright fluorescent bunker ──
-  // strong central overhead
-  const mainLight = new THREE.PointLight(0xfff5e0, 2.0, 30);
-  mainLight.position.set(0, 5.8, 0);
-  group.add(mainLight);
-
-  // ring of overhead lights around perimeter (like fluorescent banks)
-  for (let i = 0; i < 6; i++) {
-    const angle = (i / 6) * Math.PI * 2;
-    const overheadLight = new THREE.PointLight(0xfff0d0, 1.2, 18);
-    overheadLight.position.set(Math.sin(angle) * 7, 5.5, -Math.cos(angle) * 7);
-    group.add(overheadLight);
+  // ══════════════════════════════════════════════════════════════════
+  // CABLE TRAYS on ceiling
+  // ══════════════════════════════════════════════════════════════════
+  for (let i = 0; i < 3; i++) {
+    const angle = (i / 3) * Math.PI;
+    const tray = new THREE.Mesh(new THREE.BoxGeometry(20, 0.04, 0.3), darkSteel);
+    tray.position.set(0, wallH - 0.15, 0);
+    tray.rotation.y = angle;
+    group.add(tray);
+    // cable bundles
+    const cable = new THREE.Mesh(new THREE.BoxGeometry(18, 0.06, 0.12), black);
+    cable.position.set(0, wallH - 0.2, 0);
+    cable.rotation.y = angle;
+    group.add(cable);
   }
 
-  // fill at desk level so consoles are visible
+  // ══════════════════════════════════════════════════════════════════
+  // WALL DETAILS: pipes, conduit, fire extinguisher, signs
+  // ══════════════════════════════════════════════════════════════════
+
+  // vertical pipe runs (between every other wall segment)
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2 + Math.PI / 12;
+    const pipeR = wallR - 0.2;
+    const px = Math.sin(angle) * pipeR;
+    const pz = -Math.cos(angle) * pipeR;
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, wallH, 8), steel);
+    pipe.position.set(px, wallH / 2, pz);
+    group.add(pipe);
+    // pipe brackets
+    for (const bh of [1.5, 3.0, 4.5]) {
+      const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.08), steel);
+      bracket.position.set(px, bh, pz);
+      bracket.lookAt(0, bh, 0);
+      group.add(bracket);
+    }
+  }
+
+  // fire extinguisher (on one wall)
+  {
+    const fAngle = Math.PI * 0.35;
+    const fR = wallR - 0.25;
+    const fx = Math.sin(fAngle) * fR;
+    const fz = -Math.cos(fAngle) * fR;
+    const extBody = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.35, 8),
+      new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.6, metalness: 0.3 }));
+    extBody.position.set(fx, 1.2, fz);
+    group.add(extBody);
+    const extTop = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.08, 8), darkSteel);
+    extTop.position.set(fx, 1.4, fz);
+    group.add(extTop);
+  }
+
+  // wall clock
+  {
+    const cAngle = Math.PI * 1.15;
+    const cR = wallR - 0.2;
+    const cx = Math.sin(cAngle) * cR;
+    const cz = -Math.cos(cAngle) * cR;
+    const clockFace = new THREE.Mesh(new THREE.CircleGeometry(0.25, 24), cream);
+    clockFace.position.set(cx, 4.8, cz);
+    clockFace.lookAt(0, 4.8, 0);
+    group.add(clockFace);
+    const clockRim = new THREE.Mesh(new THREE.RingGeometry(0.23, 0.27, 24), darkSteel);
+    clockRim.position.set(cx * 0.998, 4.8, cz * 0.998);
+    clockRim.lookAt(0, 4.8, 0);
+    group.add(clockRim);
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // CENTER AREA: commander's podium
+  // ══════════════════════════════════════════════════════════════════
+  // podium desk
+  const podium = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.9, 0.5), olive);
+  podium.position.set(0, 0.57, 0);
+  group.add(podium);
+  const podiumTop = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.03, 0.48), cream);
+  podiumTop.position.set(0, 1.025, 0);
+  group.add(podiumTop);
+
+  // podium phone
+  const pPhone = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.05, 0.2), darkSteel);
+  pPhone.position.set(0.4, 1.07, 0);
+  group.add(pPhone);
+  const pHandset = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.18), 
+    new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.7, metalness: 0.2 })); // red phone!
+  pHandset.position.set(0.4, 1.1, 0);
+  group.add(pHandset);
+
+  // ══════════════════════════════════════════════════════════════════
+  // RAILING around center area
+  // ══════════════════════════════════════════════════════════════════
+  const railR = 3.0;
+  const railPosts = 12;
+  for (let i = 0; i < railPosts; i++) {
+    const a = (i / railPosts) * Math.PI * 2;
+    const rpx = Math.sin(a) * railR;
+    const rpz = -Math.cos(a) * railR;
+    // post
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 6), steel);
+    post.position.set(rpx, 0.45, rpz);
+    group.add(post);
+  }
+  // top rail (ring)
+  const topRail = new THREE.Mesh(new THREE.TorusGeometry(railR, 0.02, 6, 48), steel);
+  topRail.rotation.x = Math.PI / 2;
+  topRail.position.y = 0.9;
+  group.add(topRail);
+  // mid rail
+  const midRail = new THREE.Mesh(new THREE.TorusGeometry(railR, 0.015, 6, 48), steel);
+  midRail.rotation.x = Math.PI / 2;
+  midRail.position.y = 0.5;
+  group.add(midRail);
+
+  // ══════════════════════════════════════════════════════════════════
+  // LIGHTING
+  // ══════════════════════════════════════════════════════════════════
+  const mainLight = new THREE.PointLight(0xfff5e0, 2.0, 30);
+  mainLight.position.set(0, 5.5, 0);
+  group.add(mainLight);
+
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const oLight = new THREE.PointLight(0xfff0d0, 1.0, 16);
+    oLight.position.set(Math.sin(a) * 7, 5.5, -Math.cos(a) * 7);
+    group.add(oLight);
+  }
+
   const deskFill = new THREE.PointLight(0xffe8c0, 0.8, 20);
   deskFill.position.set(0, 2.0, 0);
   group.add(deskFill);
 
-  // subtle green uplight from CRT screens
-  const greenUp = new THREE.PointLight(0x33ff66, 0.3, 12);
-  greenUp.position.set(0, 1.5, 0);
+  const greenUp = new THREE.PointLight(0x33ff66, 0.2, 12);
+  greenUp.position.set(0, 1.2, 0);
   group.add(greenUp);
 }
 
