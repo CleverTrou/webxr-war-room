@@ -54,8 +54,8 @@ function init() {
   document.getElementById('vr-button-container').appendChild(vrButton);
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x06101c);
-  scene.fog = new THREE.Fog(0x06101c, 18, 35);
+  scene.background = new THREE.Color(0x1a1a18);
+  scene.fog = new THREE.Fog(0x1a1a18, 15, 30);
 
   cameraRig = new THREE.Group();
   scene.add(cameraRig);
@@ -65,11 +65,11 @@ function init() {
   cameraRig.add(camera);
 
   // lights
-  scene.add(new THREE.AmbientLight(0x405068, 1.5));
-  const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+  scene.add(new THREE.AmbientLight(0x605848, 1.2));
+  const dir = new THREE.DirectionalLight(0xfff5e0, 0.7);
   dir.position.set(5, 10, 5);
   scene.add(dir);
-  const point = new THREE.PointLight(0x80ffea, 0.8, 25);
+  const point = new THREE.PointLight(0xfff0d0, 0.5, 25);
   point.position.set(0, 6, 0);
   scene.add(point);
 
@@ -291,8 +291,8 @@ function init() {
   });
   renderer.xr.addEventListener('sessionend', () => {
     environmentGroup.visible = true;
-    scene.background = new THREE.Color(0x06101c);
-    scene.fog = new THREE.Fog(0x06101c, 18, 35);
+    scene.background = new THREE.Color(0x1a1a18);
+    scene.fog = new THREE.Fog(0x1a1a18, 15, 30);
   });
 
   updateHud();
@@ -300,142 +300,246 @@ function init() {
 
 // ── command center environment ───────────────────────────────────────
 function buildCommandCenter(group) {
-  const darkMetal  = new THREE.MeshStandardMaterial({ color: 0x1a2235, roughness: 0.8, metalness: 0.3 });
-  const medMetal   = new THREE.MeshStandardMaterial({ color: 0x253350, roughness: 0.7, metalness: 0.4 });
-  const lightTrim  = new THREE.MeshStandardMaterial({ color: 0x3a5070, roughness: 0.6, metalness: 0.5 });
-  const glowCyan   = new THREE.MeshBasicMaterial({ color: 0x80ffea });
-  const glowDim    = new THREE.MeshBasicMaterial({ color: 0x2a6060 });
-  const screenGlow = new THREE.MeshBasicMaterial({ color: 0x0a2a3a });
+  // ── materials: cold-war bunker palette ──
+  const concrete     = new THREE.MeshStandardMaterial({ color: 0x4a4a48, roughness: 0.95, metalness: 0.05 });
+  const concreteDark = new THREE.MeshStandardMaterial({ color: 0x3a3a38, roughness: 0.95, metalness: 0.05 });
+  const steel        = new THREE.MeshStandardMaterial({ color: 0x6a7078, roughness: 0.5, metalness: 0.7 });
+  const darkSteel    = new THREE.MeshStandardMaterial({ color: 0x2e3338, roughness: 0.6, metalness: 0.6 });
+  const olive        = new THREE.MeshStandardMaterial({ color: 0x4a5540, roughness: 0.8, metalness: 0.2 });
+  const cream        = new THREE.MeshStandardMaterial({ color: 0xd8d0c0, roughness: 0.85, metalness: 0.05 });
+  const crtGreen     = new THREE.MeshBasicMaterial({ color: 0x33ff66 });
+  const crtDim       = new THREE.MeshBasicMaterial({ color: 0x1a6633 });
+  const crtAmber     = new THREE.MeshBasicMaterial({ color: 0xffaa22 });
+  const redLight     = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+  const warmWhite    = new THREE.MeshBasicMaterial({ color: 0xfff5e0 });
+  const darkScreen   = new THREE.MeshBasicMaterial({ color: 0x0a1a0a });
 
-  // floor
+  // ── floor: industrial tile pattern ──
   const floor = new THREE.Mesh(
-    new THREE.CircleGeometry(12, 64),
-    new THREE.MeshStandardMaterial({ color: 0x0e1a2a, roughness: 0.9, metalness: 0.2 })
+    new THREE.CircleGeometry(14, 64),
+    new THREE.MeshStandardMaterial({ color: 0x3e3e3a, roughness: 0.9, metalness: 0.1 })
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -0.01;
   group.add(floor);
 
-  const floorRing = new THREE.Mesh(new THREE.RingGeometry(5.5, 5.6, 64), glowDim);
-  floorRing.rotation.x = -Math.PI / 2;
-  floorRing.position.y = 0.005;
-  group.add(floorRing);
+  // floor grid lines (tile look)
+  for (let i = -12; i <= 12; i += 2) {
+    const lineH = new THREE.Mesh(new THREE.BoxGeometry(28, 0.005, 0.03), darkSteel);
+    lineH.position.set(0, 0.001, i);
+    group.add(lineH);
+    const lineV = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.005, 28), darkSteel);
+    lineV.position.set(i, 0.001, 0);
+    group.add(lineV);
+  }
 
-  const centerDisc = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.0, 6), glowDim);
-  centerDisc.rotation.x = -Math.PI / 2;
-  centerDisc.position.y = 0.005;
-  group.add(centerDisc);
-
-  // circular wall
-  const wall = new THREE.Mesh(
-    new THREE.CylinderGeometry(11, 11, 8, 48, 1, true),
-    new THREE.MeshStandardMaterial({ color: 0x141e30, roughness: 0.85, metalness: 0.2, side: THREE.BackSide })
+  // raised center platform (commander's station)
+  const platform = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.8, 2.0, 0.15, 8),
+    steel
   );
-  wall.position.y = 4;
-  group.add(wall);
+  platform.position.y = 0.075;
+  group.add(platform);
 
-  // ceiling
+  // ── walls: octagonal bunker ──
+  const wallR = 12;
+  const wallH = 6;
+  const wallSides = 12;
+  for (let i = 0; i < wallSides; i++) {
+    const angle = (i / wallSides) * Math.PI * 2;
+    const nextAngle = ((i + 1) / wallSides) * Math.PI * 2;
+    const x1 = Math.sin(angle) * wallR, z1 = -Math.cos(angle) * wallR;
+    const x2 = Math.sin(nextAngle) * wallR, z2 = -Math.cos(nextAngle) * wallR;
+    const cx = (x1 + x2) / 2, cz = (z1 + z2) / 2;
+    const segW = Math.sqrt((x2 - x1) ** 2 + (z2 - z1) ** 2);
+    const wallPanel = new THREE.Mesh(
+      new THREE.BoxGeometry(segW, wallH, 0.3),
+      i % 2 === 0 ? concrete : concreteDark
+    );
+    wallPanel.position.set(cx, wallH / 2, cz);
+    wallPanel.lookAt(0, wallH / 2, 0);
+    group.add(wallPanel);
+  }
+
+  // ── ceiling: dropped panels with fluorescent lights ──
   const ceiling = new THREE.Mesh(
-    new THREE.CircleGeometry(11, 48),
-    new THREE.MeshStandardMaterial({ color: 0x0c1520, roughness: 0.9, metalness: 0.1, side: THREE.BackSide })
+    new THREE.CircleGeometry(12.5, 48),
+    new THREE.MeshStandardMaterial({ color: 0x5a5a55, roughness: 0.9, metalness: 0.05, side: THREE.BackSide })
   );
   ceiling.rotation.x = Math.PI / 2;
-  ceiling.position.y = 8;
+  ceiling.position.y = wallH;
   group.add(ceiling);
 
-  const ceilRing = new THREE.Mesh(new THREE.RingGeometry(3, 3.15, 48), glowCyan);
-  ceilRing.rotation.x = Math.PI / 2;
-  ceilRing.position.y = 7.98;
-  group.add(ceilRing);
-
-  // wall accent strips
-  [1.0, 4.0, 7.0].forEach(h => {
-    const strip = new THREE.Mesh(
-      new THREE.CylinderGeometry(10.95, 10.95, 0.04, 48, 1, true),
-      glowDim
-    );
-    strip.position.y = h;
+  // fluorescent light strips (cross pattern)
+  const lightStrips = [
+    { pos: [0, wallH - 0.05, -3], size: [6, 0.05, 0.3] },
+    { pos: [0, wallH - 0.05, 3], size: [6, 0.05, 0.3] },
+    { pos: [-3, wallH - 0.05, 0], size: [0.3, 0.05, 6] },
+    { pos: [3, wallH - 0.05, 0], size: [0.3, 0.05, 6] },
+    { pos: [0, wallH - 0.05, 0], size: [8, 0.05, 0.3] },
+    { pos: [0, wallH - 0.05, 0], size: [0.3, 0.05, 8] },
+  ];
+  lightStrips.forEach(ls => {
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(...ls.size), warmWhite);
+    strip.position.set(...ls.pos);
     group.add(strip);
   });
 
-  // console banks
-  const consoleCount = 12;
-  for (let i = 0; i < consoleCount; i++) {
-    const angle = (i / consoleCount) * Math.PI * 2;
+  // ── tiered console desks (outer ring) ──
+  const deskCount = 12;
+  for (let i = 0; i < deskCount; i++) {
+    const angle = (i / deskCount) * Math.PI * 2;
     const r = 9.5;
     const x = Math.sin(angle) * r;
-    const z = Math.cos(angle) * r;
+    const z = -Math.cos(angle) * r;
 
-    const consoleBody = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.2, 0.6), medMetal);
-    consoleBody.position.set(x, 0.6, z);
-    consoleBody.lookAt(0, 0.6, 0);
-    group.add(consoleBody);
+    // desk body
+    const desk = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.8, 0.8), olive);
+    desk.position.set(x, 0.4, z);
+    desk.lookAt(0, 0.4, 0);
+    group.add(desk);
 
-    const top = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.05, 0.5), lightTrim);
-    top.position.set(x, 1.22, z);
-    top.lookAt(0, 1.22, 0);
-    top.rotation.x -= 0.3;
-    group.add(top);
+    // desk top surface
+    const surface = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.04, 0.7), cream);
+    surface.position.set(x, 0.82, z);
+    surface.lookAt(0, 0.82, 0);
+    group.add(surface);
 
-    const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.8), screenGlow);
-    const sx = Math.sin(angle) * (r - 0.31);
-    const sz = Math.cos(angle) * (r - 0.31);
-    screen.position.set(sx, 2.0, sz);
-    screen.lookAt(0, 2.0, 0);
+    // CRT monitor (boxy)
+    const monR = r - 0.25;
+    const mx = Math.sin(angle) * monR;
+    const mz = -Math.cos(angle) * monR;
+    const monitor = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.5), darkSteel);
+    monitor.position.set(mx, 1.15, mz);
+    monitor.lookAt(0, 1.15, 0);
+    group.add(monitor);
+
+    // CRT screen face
+    const screenR = r - 0.51;
+    const sx = Math.sin(angle) * screenR;
+    const sz = -Math.cos(angle) * screenR;
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.35), darkScreen);
+    screen.position.set(sx, 1.17, sz);
+    screen.lookAt(0, 1.17, 0);
     group.add(screen);
 
-    const border = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.9), glowDim);
-    const bx = Math.sin(angle) * (r - 0.32);
-    const bz = Math.cos(angle) * (r - 0.32);
-    border.position.set(bx, 2.0, bz);
-    border.lookAt(0, 2.0, 0);
-    group.add(border);
-
-    for (let row = 0; row < 3; row++) {
-      const light = new THREE.Mesh(
-        new THREE.CircleGeometry(0.03, 8),
-        row === 0 ? glowCyan : glowDim
+    // blinking indicator lights on desk front
+    for (let j = 0; j < 4; j++) {
+      const indicator = new THREE.Mesh(
+        new THREE.CircleGeometry(0.025, 8),
+        j === 0 ? redLight : (j === 1 ? crtAmber : crtGreen)
       );
-      const lx = Math.sin(angle) * (r - 0.01);
-      const lz = Math.cos(angle) * (r - 0.01);
-      light.position.set(lx, 0.4 + row * 0.15, lz);
-      light.lookAt(0, 0.4 + row * 0.15, 0);
-      group.add(light);
+      const ir = r + 0.01;
+      const ix = Math.sin(angle) * ir;
+      const iz = -Math.cos(angle) * ir;
+      indicator.position.set(
+        ix + Math.cos(angle) * (j - 1.5) * 0.15,
+        0.65,
+        iz + Math.sin(angle) * (j - 1.5) * 0.15
+      );
+      indicator.lookAt(
+        ix + Math.cos(angle) * (j - 1.5) * 0.15 + Math.sin(angle),
+        0.65,
+        iz + Math.sin(angle) * (j - 1.5) * 0.15 - Math.cos(angle)
+      );
+      group.add(indicator);
     }
   }
 
-  // tall equipment racks
-  for (let i = 0; i < 6; i++) {
-    const angle = (i / 6) * Math.PI * 2 + Math.PI / 6;
-    const r = 10.2;
-    const x = Math.sin(angle) * r;
-    const z = Math.cos(angle) * r;
+  // ── large wall screens (big boards like Houston) ──
+  for (let i = 0; i < 5; i++) {
+    const angle = (i / 5) * Math.PI * 2;
+    const sr = wallR - 0.4;
+    const sx = Math.sin(angle) * sr;
+    const sz = -Math.cos(angle) * sr;
 
-    const rack = new THREE.Mesh(new THREE.BoxGeometry(0.5, 5, 0.4), darkMetal);
-    rack.position.set(x, 2.5, z);
+    // big screen backing
+    const backing = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2.5, 0.1), darkSteel);
+    backing.position.set(sx, 3.8, sz);
+    backing.lookAt(0, 3.8, 0);
+    group.add(backing);
+
+    // screen face
+    const sfr = sr - 0.06;
+    const sfx = Math.sin(angle) * sfr;
+    const sfz = -Math.cos(angle) * sfr;
+    const screenFace = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.2), darkScreen);
+    screenFace.position.set(sfx, 3.8, sfz);
+    screenFace.lookAt(0, 3.8, 0);
+    group.add(screenFace);
+
+    // green scan line effect (horizontal lines on big screen)
+    for (let line = 0; line < 6; line++) {
+      const lr = sr - 0.07;
+      const lx = Math.sin(angle) * lr;
+      const lz = -Math.cos(angle) * lr;
+      const scanLine = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.8, 0.02),
+        line % 2 === 0 ? crtDim : crtGreen
+      );
+      scanLine.position.set(lx, 2.9 + line * 0.35, lz);
+      scanLine.lookAt(0, 2.9 + line * 0.35, 0);
+      group.add(scanLine);
+    }
+
+    // "STATUS" label strip above screen
+    const labelR = sr - 0.07;
+    const lbx = Math.sin(angle) * labelR;
+    const lbz = -Math.cos(angle) * labelR;
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.15), crtAmber);
+    label.position.set(lbx, 5.15, lbz);
+    label.lookAt(0, 5.15, 0);
+    group.add(label);
+  }
+
+  // ── equipment racks (tall cabinets between wall screens) ──
+  for (let i = 0; i < 5; i++) {
+    const angle = ((i + 0.5) / 5) * Math.PI * 2;
+    const rr = wallR - 0.5;
+    const rx = Math.sin(angle) * rr;
+    const rz = -Math.cos(angle) * rr;
+
+    const rack = new THREE.Mesh(new THREE.BoxGeometry(1.0, 5.0, 0.6), darkSteel);
+    rack.position.set(rx, 2.5, rz);
     rack.lookAt(0, 2.5, 0);
     group.add(rack);
 
-    for (let j = 0; j < 8; j++) {
+    // blinking LEDs on rack
+    for (let j = 0; j < 10; j++) {
+      const ledR = rr - 0.31;
+      const lx = Math.sin(angle) * ledR;
+      const lz = -Math.cos(angle) * ledR;
       const led = new THREE.Mesh(
         new THREE.CircleGeometry(0.02, 6),
-        j % 3 === 0 ? glowCyan : glowDim
+        j % 3 === 0 ? redLight : (j % 3 === 1 ? crtAmber : crtGreen)
       );
-      const lx = Math.sin(angle) * (r - 0.21);
-      const lz = Math.cos(angle) * (r - 0.21);
-      led.position.set(lx, 0.8 + j * 0.5, lz);
-      led.lookAt(0, 0.8 + j * 0.5, 0);
+      led.position.set(
+        lx + Math.cos(angle) * ((j % 2) - 0.5) * 0.3,
+        0.8 + j * 0.45,
+        lz + Math.sin(angle) * ((j % 2) - 0.5) * 0.3
+      );
+      led.lookAt(0, 0.8 + j * 0.45, 0);
       group.add(led);
     }
   }
 
-  // overhead lights
-  const light1 = new THREE.PointLight(0x80ffea, 0.3, 15);
-  light1.position.set(0, 7, 0);
-  group.add(light1);
-  const light2 = new THREE.PointLight(0x3060a0, 0.4, 20);
-  light2.position.set(0, 5, 0);
-  group.add(light2);
+  // ── lighting: warm overhead ──
+  const mainLight = new THREE.PointLight(0xfff0d0, 0.6, 25);
+  mainLight.position.set(0, 5.5, 0);
+  group.add(mainLight);
+
+  const fillLight = new THREE.PointLight(0xd0e0ff, 0.3, 20);
+  fillLight.position.set(0, 3, 0);
+  group.add(fillLight);
+
+  // subtle green uplight from consoles
+  const greenUp = new THREE.PointLight(0x33ff66, 0.15, 8);
+  greenUp.position.set(0, 1.5, 0);
+  group.add(greenUp);
+
+  // ambient bump so nothing is pure black
+  const ambient = new THREE.AmbientLight(0x404040, 0.4);
+  group.add(ambient);
 }
 
 // ── VR teleport handler ──────────────────────────────────────────────
