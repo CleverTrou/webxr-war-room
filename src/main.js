@@ -534,13 +534,13 @@ function buildCommandCenter(group) {
     keyboard.position.set(kbx, 0.8, kbz);
     keyboard.lookAt(0, 0.8, 0);
     group.add(keyboard);
-    // key area (darker inset)
+    // key area (darker inset) — thin box so lookAt works
     const keyR = kbR - 0.005;
     const keyx = Math.sin(angle) * keyR;
     const keyz = -Math.cos(angle) * keyR;
-    const keys = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.12), darkSteel);
+    const keys = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.005, 0.12), darkSteel);
     keys.position.set(keyx, 0.815, keyz);
-    keys.rotation.x = -Math.PI / 2;
+    keys.lookAt(0, 0.815, 0);
     group.add(keys);
 
     // desk phone (on desk, wall side, to the right)
