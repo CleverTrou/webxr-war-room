@@ -54,8 +54,8 @@ function init() {
   document.getElementById('vr-button-container').appendChild(vrButton);
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a1a18);
-  scene.fog = new THREE.Fog(0x1a1a18, 15, 30);
+  scene.background = new THREE.Color(0x2a2a28);
+  scene.fog = new THREE.Fog(0x2a2a28, 25, 45);
 
   cameraRig = new THREE.Group();
   scene.add(cameraRig);
@@ -64,14 +64,14 @@ function init() {
   camera.position.set(0, 1.6, 0);
   cameraRig.add(camera);
 
-  // lights
-  scene.add(new THREE.AmbientLight(0x605848, 1.2));
-  const dir = new THREE.DirectionalLight(0xfff5e0, 0.7);
+  // lights — bright fluorescent-lit bunker
+  scene.add(new THREE.AmbientLight(0xfff5e8, 1.0));
+  const dir = new THREE.DirectionalLight(0xfff5e0, 1.2);
   dir.position.set(5, 10, 5);
   scene.add(dir);
-  const point = new THREE.PointLight(0xfff0d0, 0.5, 25);
-  point.position.set(0, 6, 0);
-  scene.add(point);
+  const dir2 = new THREE.DirectionalLight(0xfff0d0, 0.6);
+  dir2.position.set(-5, 8, -5);
+  scene.add(dir2);
 
   // environment
   environmentGroup = new THREE.Group();
@@ -291,8 +291,8 @@ function init() {
   });
   renderer.xr.addEventListener('sessionend', () => {
     environmentGroup.visible = true;
-    scene.background = new THREE.Color(0x1a1a18);
-    scene.fog = new THREE.Fog(0x1a1a18, 15, 30);
+    scene.background = new THREE.Color(0x2a2a28);
+    scene.fog = new THREE.Fog(0x2a2a28, 25, 45);
   });
 
   updateHud();
@@ -301,23 +301,23 @@ function init() {
 // ── command center environment ───────────────────────────────────────
 function buildCommandCenter(group) {
   // ── materials: cold-war bunker palette ──
-  const concrete     = new THREE.MeshStandardMaterial({ color: 0x4a4a48, roughness: 0.95, metalness: 0.05 });
-  const concreteDark = new THREE.MeshStandardMaterial({ color: 0x3a3a38, roughness: 0.95, metalness: 0.05 });
-  const steel        = new THREE.MeshStandardMaterial({ color: 0x6a7078, roughness: 0.5, metalness: 0.7 });
-  const darkSteel    = new THREE.MeshStandardMaterial({ color: 0x2e3338, roughness: 0.6, metalness: 0.6 });
-  const olive        = new THREE.MeshStandardMaterial({ color: 0x4a5540, roughness: 0.8, metalness: 0.2 });
-  const cream        = new THREE.MeshStandardMaterial({ color: 0xd8d0c0, roughness: 0.85, metalness: 0.05 });
+  const concrete     = new THREE.MeshStandardMaterial({ color: 0x8a8a85, roughness: 0.95, metalness: 0.05 });
+  const concreteDark = new THREE.MeshStandardMaterial({ color: 0x7a7a75, roughness: 0.95, metalness: 0.05 });
+  const steel        = new THREE.MeshStandardMaterial({ color: 0x8a9098, roughness: 0.5, metalness: 0.7 });
+  const darkSteel    = new THREE.MeshStandardMaterial({ color: 0x4e5358, roughness: 0.6, metalness: 0.6 });
+  const olive        = new THREE.MeshStandardMaterial({ color: 0x6a7560, roughness: 0.8, metalness: 0.2 });
+  const cream        = new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.85, metalness: 0.05 });
   const crtGreen     = new THREE.MeshBasicMaterial({ color: 0x33ff66 });
   const crtDim       = new THREE.MeshBasicMaterial({ color: 0x1a6633 });
   const crtAmber     = new THREE.MeshBasicMaterial({ color: 0xffaa22 });
   const redLight     = new THREE.MeshBasicMaterial({ color: 0xff3333 });
-  const warmWhite    = new THREE.MeshBasicMaterial({ color: 0xfff5e0 });
+  const warmWhite    = new THREE.MeshBasicMaterial({ color: 0xfff8e8 });
   const darkScreen   = new THREE.MeshBasicMaterial({ color: 0x0a1a0a });
 
   // ── floor: industrial tile pattern ──
   const floor = new THREE.Mesh(
     new THREE.CircleGeometry(14, 64),
-    new THREE.MeshStandardMaterial({ color: 0x3e3e3a, roughness: 0.9, metalness: 0.1 })
+    new THREE.MeshStandardMaterial({ color: 0x5e5e5a, roughness: 0.9, metalness: 0.1 })
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -0.01;
@@ -354,7 +354,7 @@ function buildCommandCenter(group) {
     const segW = Math.sqrt((x2 - x1) ** 2 + (z2 - z1) ** 2);
     const wallPanel = new THREE.Mesh(
       new THREE.BoxGeometry(segW, wallH, 0.3),
-      i % 2 === 0 ? concrete : concreteDark
+      i % 3 === 0 ? concreteDark : concrete
     );
     wallPanel.position.set(cx, wallH / 2, cz);
     wallPanel.lookAt(0, wallH / 2, 0);
@@ -364,7 +364,7 @@ function buildCommandCenter(group) {
   // ── ceiling: dropped panels with fluorescent lights ──
   const ceiling = new THREE.Mesh(
     new THREE.CircleGeometry(12.5, 48),
-    new THREE.MeshStandardMaterial({ color: 0x5a5a55, roughness: 0.9, metalness: 0.05, side: THREE.BackSide })
+    new THREE.MeshStandardMaterial({ color: 0x7a7a75, roughness: 0.9, metalness: 0.05, side: THREE.BackSide })
   );
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = wallH;
@@ -523,23 +523,29 @@ function buildCommandCenter(group) {
     }
   }
 
-  // ── lighting: warm overhead ──
-  const mainLight = new THREE.PointLight(0xfff0d0, 0.6, 25);
-  mainLight.position.set(0, 5.5, 0);
+  // ── lighting: bright fluorescent bunker ──
+  // strong central overhead
+  const mainLight = new THREE.PointLight(0xfff5e0, 2.0, 30);
+  mainLight.position.set(0, 5.8, 0);
   group.add(mainLight);
 
-  const fillLight = new THREE.PointLight(0xd0e0ff, 0.3, 20);
-  fillLight.position.set(0, 3, 0);
-  group.add(fillLight);
+  // ring of overhead lights around perimeter (like fluorescent banks)
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2;
+    const overheadLight = new THREE.PointLight(0xfff0d0, 1.2, 18);
+    overheadLight.position.set(Math.sin(angle) * 7, 5.5, -Math.cos(angle) * 7);
+    group.add(overheadLight);
+  }
 
-  // subtle green uplight from consoles
-  const greenUp = new THREE.PointLight(0x33ff66, 0.15, 8);
+  // fill at desk level so consoles are visible
+  const deskFill = new THREE.PointLight(0xffe8c0, 0.8, 20);
+  deskFill.position.set(0, 2.0, 0);
+  group.add(deskFill);
+
+  // subtle green uplight from CRT screens
+  const greenUp = new THREE.PointLight(0x33ff66, 0.3, 12);
   greenUp.position.set(0, 1.5, 0);
   group.add(greenUp);
-
-  // ambient bump so nothing is pure black
-  const ambient = new THREE.AmbientLight(0x404040, 0.4);
-  group.add(ambient);
 }
 
 // ── VR teleport handler ──────────────────────────────────────────────
