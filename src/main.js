@@ -433,6 +433,8 @@ function buildCommandCenter(group) {
 
   // ══════════════════════════════════════════════════════════════════
   // CONSOLE WORKSTATIONS (12 around perimeter)
+  // Operator sits on CENTER side, facing OUTWARD toward wall screens
+  // Layout (center → wall): backrest → chair → keyboard → desk → monitor
   // ══════════════════════════════════════════════════════════════════
   const deskCount = 12;
   for (let i = 0; i < deskCount; i++) {
@@ -440,10 +442,8 @@ function buildCommandCenter(group) {
     const r = 9.2;
     const x = Math.sin(angle) * r;
     const z = -Math.cos(angle) * r;
-    const fwd = new THREE.Vector3(Math.sin(angle), 0, -Math.cos(angle)); // toward center
-    const right = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
 
-    // desk body (L-shaped console)
+    // desk body
     const deskMain = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.75, 0.9), olive);
     deskMain.position.set(x, 0.375, z);
     deskMain.lookAt(0, 0.375, 0);
@@ -455,8 +455,8 @@ function buildCommandCenter(group) {
     top.lookAt(0, 0.77, 0);
     group.add(top);
 
-    // desk front panel (knee panel) darker
-    const kneePanelR = r + 0.44;
+    // knee panel (center-facing side, where operator's legs go)
+    const kneePanelR = r - 0.44;
     const kx = Math.sin(angle) * kneePanelR;
     const kz = -Math.cos(angle) * kneePanelR;
     const kneePanel = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 0.04), darkSteel);
@@ -464,8 +464,8 @@ function buildCommandCenter(group) {
     kneePanel.lookAt(0, 0.35, 0);
     group.add(kneePanel);
 
-    // CRT monitor — chunky bezel
-    const monR = r - 0.15;
+    // CRT monitor on wall side of desk, screen facing center (toward operator)
+    const monR = r + 0.15;
     const mx = Math.sin(angle) * monR;
     const mz = -Math.cos(angle) * monR;
 
@@ -475,7 +475,7 @@ function buildCommandCenter(group) {
     monBody.lookAt(0, 1.0, 0);
     group.add(monBody);
 
-    // screen bezel (dark frame)
+    // screen bezel (dark frame) — on center-facing side of monitor
     const bezelR = monR - 0.22;
     const bx = Math.sin(angle) * bezelR;
     const bz = -Math.cos(angle) * bezelR;
@@ -512,7 +512,6 @@ function buildCommandCenter(group) {
       const tlz = -Math.cos(angle) * tlR;
       const w = textWidths[(i + tl) % textWidths.length];
       const textLine = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.008), crtGreen);
-      // offset left to simulate left-aligned text
       const leftOff = -(0.15 - w / 2);
       textLine.position.set(
         tlx + Math.cos(angle) * leftOff,
@@ -527,8 +526,8 @@ function buildCommandCenter(group) {
       group.add(textLine);
     }
 
-    // keyboard on desk
-    const kbR = r + 0.1;
+    // keyboard on desk (center side, in front of operator)
+    const kbR = r - 0.1;
     const kbx = Math.sin(angle) * kbR;
     const kbz = -Math.cos(angle) * kbR;
     const keyboard = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.025, 0.15), beige);
@@ -536,7 +535,7 @@ function buildCommandCenter(group) {
     keyboard.lookAt(0, 0.8, 0);
     group.add(keyboard);
     // key area (darker inset)
-    const keyR = kbR + 0.005;
+    const keyR = kbR - 0.005;
     const keyx = Math.sin(angle) * keyR;
     const keyz = -Math.cos(angle) * keyR;
     const keys = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.12), darkSteel);
@@ -544,8 +543,8 @@ function buildCommandCenter(group) {
     keys.rotation.x = -Math.PI / 2;
     group.add(keys);
 
-    // desk phone (to the right of monitor)
-    const phR = r - 0.05;
+    // desk phone (on desk, wall side, to the right)
+    const phR = r + 0.05;
     const phx = Math.sin(angle) * phR + Math.cos(angle) * 0.7;
     const phz = -Math.cos(angle) * phR + Math.sin(angle) * 0.7;
     const phoneBase = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.22), darkSteel);
@@ -555,16 +554,16 @@ function buildCommandCenter(group) {
     handset.position.set(phx, 0.86, phz);
     group.add(handset);
 
-    // coffee mug (to the left)
-    const mugR = r + 0.15;
+    // coffee mug (center side, to the left of keyboard)
+    const mugR = r - 0.15;
     const mugx = Math.sin(angle) * mugR - Math.cos(angle) * 0.65;
     const mugz = -Math.cos(angle) * mugR - Math.sin(angle) * 0.65;
     const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.09, 8), cream);
     mug.position.set(mugx, 0.835, mugz);
     group.add(mug);
 
-    // chair
-    const chairR = r + 0.9;
+    // chair (center side of desk — operator faces outward)
+    const chairR = r - 0.9;
     const chx = Math.sin(angle) * chairR;
     const chz = -Math.cos(angle) * chairR;
     // seat
@@ -572,8 +571,8 @@ function buildCommandCenter(group) {
     seat.position.set(chx, 0.45, chz);
     seat.lookAt(0, 0.45, 0);
     group.add(seat);
-    // backrest
-    const backR = chairR + 0.18;
+    // backrest (even further toward center, behind operator)
+    const backR = chairR - 0.18;
     const bkx = Math.sin(angle) * backR;
     const bkz = -Math.cos(angle) * backR;
     const backrest = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.35, 0.04), brown);
@@ -589,15 +588,15 @@ function buildCommandCenter(group) {
     cbase.position.set(chx, 0.02, chz);
     group.add(cbase);
 
-    // indicator light panel on desk front
+    // indicator lights on knee panel (center-facing)
     for (let j = 0; j < 5; j++) {
-      const indR = r + 0.46;
+      const indR = r - 0.46;
       const ix = Math.sin(angle) * indR + Math.cos(angle) * (j - 2) * 0.12;
       const iz = -Math.cos(angle) * indR + Math.sin(angle) * (j - 2) * 0.12;
       const mat = j === 0 ? redLight : (j < 3 ? crtAmber : crtGreen);
       const ind = new THREE.Mesh(new THREE.CircleGeometry(0.02, 8), mat);
       ind.position.set(ix, 0.55, iz);
-      ind.lookAt(ix + Math.sin(angle), 0.55, iz - Math.cos(angle));
+      ind.lookAt(ix - Math.sin(angle), 0.55, iz + Math.cos(angle));
       group.add(ind);
     }
   }
